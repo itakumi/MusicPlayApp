@@ -1,4 +1,4 @@
-from musicplayapp_interface import *
+from MusicPlayApp_Interface import *
 info=AudioInformation()
 
 def dirdialog_clicked():#フォルダ参照
