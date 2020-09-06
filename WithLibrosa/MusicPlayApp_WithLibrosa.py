@@ -477,7 +477,9 @@ class WinodwClass(tk.Frame):
         tk.Button(master, text="playlist終了", fg = "deep pink",command=partial(backgroundprocess,b'q',''),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
         tk.Button(master, text="back", fg = "orange",command=partial(backgroundprocess,b'b',''),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
         tk.Button(master, text="next", fg = "orange",command=partial(backgroundprocess,b'n',''),font=("",20)).grid(row=4, column=3, padx=10, pady=10)
-
+        #playimage = PhotoImage("再生ボタン.png")
+        #playimage = playimage.zoom(100)
+        #tk.Button(master, text="再生", fg = "navy",image=playimage,command=start_playthread,font=("",20)).grid(row=6, column=1,sticky="NWES", padx=10, pady=10)
         tk.Button(master, text="再生", fg = "navy",command=start_playthread,font=("",20)).grid(row=6, column=1, padx=10, pady=10)
         info.playtimeframe = tk.LabelFrame(master, text="再生時間",font=("",20))
         info.playtimeframe.grid(row=6, padx=10, pady=10)
