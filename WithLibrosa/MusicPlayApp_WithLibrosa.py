@@ -201,32 +201,32 @@ def backgroundprocess(kb):
                 info.Quickness-=0.1
                 info.speed_label.grid_forget()
                 info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-                info.speed_label.grid(row=5,column=1, sticky="e")
+                info.speed_label.grid(row=5,column=1)
                 print("Speed=",round(info.Quickness,3))
         elif kb==b'H':#Up
             info.Key+=0.1
             info.r12=r**np.float(info.Key)
             info.pitch_label.grid_forget()
             info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-            info.pitch_label.grid(row=5,column=0, sticky="e")
+            info.pitch_label.grid(row=5,column=0)
             info.renew_flag=True
             print("Key=",round(info.Key,2))
         elif kb==b'M':#Right
             info.Quickness+=0.1
             info.speed_label.grid_forget()
             info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-            info.speed_label.grid(row=5,column=1, sticky="e")
+            info.speed_label.grid(row=5,column=1)
             print("Speed=",round(info.Quickness,3))
         elif kb==b'P':#Down
             info.Key-=0.1
             info.r12=r**np.float(info.Key)
             info.pitch_label.grid_forget()
             info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-            info.pitch_label.grid(row=5,column=0, sticky="e")
+            info.pitch_label.grid(row=5,column=0)
             info.renew_flag=True
             print("Key=",round(info.Key,2))
     elif kb.decode()=='\r':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -243,7 +243,7 @@ def backgroundprocess(kb):
             info.renew_flag=True
             time.sleep(0.2)
     elif kb.decode()=='n':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -254,7 +254,7 @@ def backgroundprocess(kb):
             info.one_repeat_flag=False
             info.quit=True
     elif kb.decode()=='p':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -262,7 +262,7 @@ def backgroundprocess(kb):
             info.song.wf.rewind()
         info.renew_flag=True
     elif kb.decode()=='b':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -274,7 +274,7 @@ def backgroundprocess(kb):
     elif kb.decode()=='h':
         help()
     elif kb.decode()=='g':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -284,7 +284,7 @@ def backgroundprocess(kb):
                 info.song.wf.setpos(info.song.wf.tell()+int(info.onesecframes*10))
             info.renew_flag=True
     elif kb.decode()=='f':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -294,7 +294,7 @@ def backgroundprocess(kb):
                 info.song.wf.setpos(info.song.wf.tell()+int(info.onesecframes*3))
             info.renew_flag=True
     elif kb.decode()=='d':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -304,7 +304,7 @@ def backgroundprocess(kb):
                 info.song.wf.setpos(info.song.wf.tell()-int(info.onesecframes*3))
             info.renew_flag=True
     elif kb.decode()=='s':
-        if info.thread_play is None:
+        if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
             #print("音楽を開始してください")
         else:
@@ -318,7 +318,7 @@ def backgroundprocess(kb):
         info.r12=1
         info.pitch_label.grid_forget()
         info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0, sticky="e")
+        info.pitch_label.grid(row=5,column=0)
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
@@ -326,12 +326,13 @@ def backgroundprocess(kb):
         info.Quickness=1
         info.speed_label.grid_forget()
         info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1, sticky="e")
+        info.speed_label.grid(row=5,column=1)
         print("Speed=",round(info.Quickness,3))
     elif kb.decode()=='q':
-        info.next_play_index=info.playlist_len+1
-        info.back_flag=False
-        info.quit=True
+        if info.song is not None:
+            info.next_play_index=info.playlist_len+1
+            info.back_flag=False
+            info.quit=True
     elif kb.decode()=='z':
         print("シャッフル再生")
         info.back_flag=False
@@ -364,7 +365,7 @@ def backgroundprocess(kb):
             info.Quickness-=0.1
             info.speed_label.grid_forget()
             info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-            info.speed_label.grid(row=5,column=1, sticky="e")
+            info.speed_label.grid(row=5,column=1)
             print("Speed=",round(info.Quickness,3))
     elif kb==b'left_little':#Left
         if round(info.Quickness,2)==0.01:
@@ -374,14 +375,14 @@ def backgroundprocess(kb):
             info.Quickness-=0.01
             info.speed_label.grid_forget()
             info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-            info.speed_label.grid(row=5,column=1, sticky="e")
+            info.speed_label.grid(row=5,column=1)
             print("Speed=",round(info.Quickness,3))
     elif kb==b'up':#Up
         info.Key+=0.1
         info.r12=r**np.float(info.Key)
         info.pitch_label.grid_forget()
         info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0, sticky="e")
+        info.pitch_label.grid(row=5,column=0)
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
@@ -390,7 +391,7 @@ def backgroundprocess(kb):
         info.r12=r**np.float(info.Key)
         info.pitch_label.grid_forget()
         info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0, sticky="e")
+        info.pitch_label.grid(row=5,column=0)
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
@@ -398,20 +399,20 @@ def backgroundprocess(kb):
         info.Quickness+=0.1
         info.speed_label.grid_forget()
         info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1, sticky="e")
+        info.speed_label.grid(row=5,column=1)
         print("Speed=",round(info.Quickness,3))
     elif kb==b'right_little':#Right
         info.Quickness+=0.01
         info.speed_label.grid_forget()
         info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1, sticky="e")
+        info.speed_label.grid(row=5,column=1)
         print("Speed=",round(info.Quickness,3))
     elif kb==b'down':#Down
         info.Key-=0.1
         info.r12=r**np.float(info.Key)
         info.pitch_label.grid_forget()
         info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0, sticky="e")
+        info.pitch_label.grid(row=5,column=0)
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
@@ -420,7 +421,7 @@ def backgroundprocess(kb):
         info.r12=r**np.float(info.Key)
         info.pitch_label.grid_forget()
         info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0, sticky="e")
+        info.pitch_label.grid(row=5,column=0)
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
@@ -439,7 +440,7 @@ class WinodwClass(tk.Frame):
     def __init__(self,master):
         super().__init__(master)
         master.title("音楽再生アプリ") #タイトル作成
-        #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else print("再生を終了させてください")))
+        master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
         tk.Button(master, text="pitch-1", fg = "red",command=partial(backgroundprocess,b'down_much'),font=("",20)).grid(row=4, column=0, padx=10, pady=10)
         tk.Button(master, text="pitch-0.1", fg = "red",command=partial(backgroundprocess,b'down'),font=("",20)).grid(row=3, column=0, padx=10, pady=10)
@@ -447,7 +448,9 @@ class WinodwClass(tk.Frame):
         command=partial(backgroundprocess,b'up'),font=("",20)).grid(row=1, column=0, padx=10, pady=10)
         tk.Button(master, text="pitch+1", fg = "red",command=partial(backgroundprocess,b'up_much'),font=("",20)).grid(row=0, column=0, padx=10, pady=10)
         info.pitch_label=tk.Label(master, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0, sticky="e")
+        info.pitch_label.grid(row=5,column=0)
+        #master.grid_rowconfigure(1, weight=1)
+        #master.grid_columnconfigure(1, weight=1)
         tk.Button(master, text="pitch_reset", fg = "red",command=partial(backgroundprocess,b'e'),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
 
         tk.Button(master, text="speed+10%", fg = "blue",command=partial(backgroundprocess,b'right'),font=("",20)).grid(row=0, column=1, padx=10, pady=10)
@@ -455,7 +458,7 @@ class WinodwClass(tk.Frame):
         tk.Button(master, text="speed-1%", fg = "blue",command=partial(backgroundprocess,b'left_little'),font=("",20)).grid(row=3, column=1, padx=10, pady=10)
         tk.Button(master, text="speed-10%", fg = "blue",command=partial(backgroundprocess,b'left'),font=("",20)).grid(row=4, column=1, padx=10, pady=10)
         info.speed_label=tk.Label(master, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1, sticky="e")
+        info.speed_label.grid(row=5,column=1)
         tk.Button(master, text="speed_reset", fg = "blue",command=partial(backgroundprocess,b'r'),font=("",20)).grid(row=2, column=1, padx=10, pady=10)
 
         tk.Button(master, text="back_10sec", fg = "green",command=partial(backgroundprocess,b's'),font=("",20)).grid(row=3, column=2, padx=10, pady=10)
@@ -489,7 +492,7 @@ def window():
     rootA.mainloop()
 
 def getplaytime(root):
-    if (info.thread_play is not None) and (info.head is not None):
+    if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
         info.label.pack_forget()
         info.label=tk.Label(info.playtimeframe, text=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s",font=("",20))
         info.label.pack()
@@ -616,7 +619,7 @@ class PlayThread(threading.Thread):
                 info.thread_play=None
                 return
         except:
-            messagebox.showinfo('エラー', '何らかのエラーが発生しました(これを見たときは至急私まで)')
+            messagebox.showinfo('エラー', '予期せぬエラーが発生しました(これを見たときは至急私まで)')
             #print("何らかのエラーが発生しました")
             #print(e)
         else:
@@ -732,7 +735,8 @@ class PlayThread(threading.Thread):
             index=0
             info.playlist_len=len(playlist)
             if info.playlist_len==0:
-                print("playlistの曲がありません")
+                messagebox.showinfo('エラー', 'playlistの曲がありません')
+                #print("playlistの曲がありません")
                 info.thread_play=None
                 return
             # Canvas Widget を生成
@@ -781,6 +785,9 @@ class PlayThread(threading.Thread):
                 if index==info.playlist_len:
                     break
         print("Playlistが終了しました")
+        info.label.pack_forget()
+        info.label=tk.Label(info.playtimeframe, text='--s/--s',font=("",20))
+        info.label.pack()
         info.thread_play=None
 
 def start_windowthread():
@@ -788,6 +795,8 @@ def start_windowthread():
     thread_window.start()
 
 def start_playthread():
+    print(info.song)
+    info.song=None
     if info.thread_play is None:
         info.thread_play=PlayThread()
         info.thread_play.start()
