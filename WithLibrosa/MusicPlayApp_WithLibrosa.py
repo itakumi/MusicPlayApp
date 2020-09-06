@@ -112,7 +112,7 @@ class AudioFile:
                     self.renew()
                     info.renew_flag=False
                 if msvcrt.kbhit():
-                    backgroundprocess(msvcrt.getch())
+                    backgroundprocess(msvcrt.getch(),'')
                 else:
                     if self.stream.is_active():
                         currentpos=self.wf.tell()
@@ -145,7 +145,7 @@ class AudioFile:
                                         self.stream.stop_stream()
                                     break
                                 if msvcrt.kbhit():
-                                    backgroundprocess(msvcrt.getch())
+                                    backgroundprocess(msvcrt.getch(),'')
                                 if i<int(len(data)/(size*4)):
                                     dummy=self.wf.readframes(size)
                                     if self.stream.is_active():
@@ -186,11 +186,18 @@ class AudioFile:
                     #rate = int(self.wf.getframerate()*self.speed),
                     rate = int(self.wf.getframerate()),
                     output = True)
-def backgroundprocess(kb):
+def backgroundprocess(kb,scaleint):
     if isinstance(kb,int):#playlistの曲のボタンが押されたとき
         info.next_play_index=kb
         info.back_flag=False
         info.quit=True
+    elif isinstance(kb,float):
+        if info.thread_play is None or info.song is None:
+            messagebox.showinfo('エラー', '音楽を開始してください')
+            #print("音楽を開始してください")
+        else:
+            info.song.wf.setpos(int(info.head+info.onesecframes*float(scaleint)))
+            info.renew_flag=True
     elif kb==b'\xe0':
         kb=msvcrt.getch()
         if kb==b'K':#Left
@@ -440,36 +447,36 @@ class WinodwClass(tk.Frame):
     def __init__(self,master):
         super().__init__(master)
         master.title("音楽再生アプリ") #タイトル作成
-        master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
+        #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
-        tk.Button(master, text="pitch-1", fg = "red",command=partial(backgroundprocess,b'down_much'),font=("",20)).grid(row=4, column=0, padx=10, pady=10)
-        tk.Button(master, text="pitch-0.1", fg = "red",command=partial(backgroundprocess,b'down'),font=("",20)).grid(row=3, column=0, padx=10, pady=10)
+        tk.Button(master, text="pitch-1", fg = "red",command=partial(backgroundprocess,b'down_much',''),font=("",20)).grid(row=4, column=0, padx=10, pady=10)
+        tk.Button(master, text="pitch-0.1", fg = "red",command=partial(backgroundprocess,b'down',''),font=("",20)).grid(row=3, column=0, padx=10, pady=10)
         tk.Button(master, text="pitch+0.1", fg = "red",
         command=partial(backgroundprocess,b'up'),font=("",20)).grid(row=1, column=0, padx=10, pady=10)
-        tk.Button(master, text="pitch+1", fg = "red",command=partial(backgroundprocess,b'up_much'),font=("",20)).grid(row=0, column=0, padx=10, pady=10)
+        tk.Button(master, text="pitch+1", fg = "red",command=partial(backgroundprocess,b'up_much',''),font=("",20)).grid(row=0, column=0, padx=10, pady=10)
         info.pitch_label=tk.Label(master, text="Pitch="+str(round(info.Key,2)),font=("",20))
         info.pitch_label.grid(row=5,column=0)
         #master.grid_rowconfigure(1, weight=1)
         #master.grid_columnconfigure(1, weight=1)
-        tk.Button(master, text="pitch_reset", fg = "red",command=partial(backgroundprocess,b'e'),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
+        tk.Button(master, text="pitch_reset", fg = "red",command=partial(backgroundprocess,b'e',''),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
 
-        tk.Button(master, text="speed+10%", fg = "blue",command=partial(backgroundprocess,b'right'),font=("",20)).grid(row=0, column=1, padx=10, pady=10)
-        tk.Button(master, text="speed+1%", fg = "blue",command=partial(backgroundprocess,b'right_little'),font=("",20)).grid(row=1, column=1, padx=10, pady=10)
-        tk.Button(master, text="speed-1%", fg = "blue",command=partial(backgroundprocess,b'left_little'),font=("",20)).grid(row=3, column=1, padx=10, pady=10)
-        tk.Button(master, text="speed-10%", fg = "blue",command=partial(backgroundprocess,b'left'),font=("",20)).grid(row=4, column=1, padx=10, pady=10)
+        tk.Button(master, text="speed+10%", fg = "blue",command=partial(backgroundprocess,b'right',''),font=("",20)).grid(row=0, column=1, padx=10, pady=10)
+        tk.Button(master, text="speed+1%", fg = "blue",command=partial(backgroundprocess,b'right_little',''),font=("",20)).grid(row=1, column=1, padx=10, pady=10)
+        tk.Button(master, text="speed-1%", fg = "blue",command=partial(backgroundprocess,b'left_little',''),font=("",20)).grid(row=3, column=1, padx=10, pady=10)
+        tk.Button(master, text="speed-10%", fg = "blue",command=partial(backgroundprocess,b'left',''),font=("",20)).grid(row=4, column=1, padx=10, pady=10)
         info.speed_label=tk.Label(master, text="Speed="+str(round(info.Quickness,3)),font=("",20))
         info.speed_label.grid(row=5,column=1)
-        tk.Button(master, text="speed_reset", fg = "blue",command=partial(backgroundprocess,b'r'),font=("",20)).grid(row=2, column=1, padx=10, pady=10)
+        tk.Button(master, text="speed_reset", fg = "blue",command=partial(backgroundprocess,b'r',''),font=("",20)).grid(row=2, column=1, padx=10, pady=10)
 
-        tk.Button(master, text="back_10sec", fg = "green",command=partial(backgroundprocess,b's'),font=("",20)).grid(row=3, column=2, padx=10, pady=10)
-        tk.Button(master, text="back_3sec", fg = "green",command=partial(backgroundprocess,b'd'),font=("",20)).grid(row=2, column=2, padx=10, pady=10)
-        tk.Button(master, text="forward_3sec", fg = "green",command=partial(backgroundprocess,b'f'),font=("",20)).grid(row=1, column=2, padx=10, pady=10)
-        tk.Button(master, text="forward_10sec", fg = "green",command=partial(backgroundprocess,b'g'),font=("",20)).grid(row=0, column=2, padx=10, pady=10)
+        tk.Button(master, text="back_10sec", fg = "green",command=partial(backgroundprocess,b's',''),font=("",20)).grid(row=3, column=2, padx=10, pady=10)
+        tk.Button(master, text="back_3sec", fg = "green",command=partial(backgroundprocess,b'd',''),font=("",20)).grid(row=2, column=2, padx=10, pady=10)
+        tk.Button(master, text="forward_3sec", fg = "green",command=partial(backgroundprocess,b'f',''),font=("",20)).grid(row=1, column=2, padx=10, pady=10)
+        tk.Button(master, text="forward_10sec", fg = "green",command=partial(backgroundprocess,b'g',''),font=("",20)).grid(row=0, column=2, padx=10, pady=10)
 
-        tk.Button(master, text="restart", fg = "deep pink",command=partial(backgroundprocess,b'p'),font=("",20)).grid(row=5, column=2, padx=10, pady=10)
-        tk.Button(master, text="playlist終了", fg = "deep pink",command=partial(backgroundprocess,b'q'),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
-        tk.Button(master, text="back", fg = "orange",command=partial(backgroundprocess,b'b'),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
-        tk.Button(master, text="next", fg = "orange",command=partial(backgroundprocess,b'n'),font=("",20)).grid(row=4, column=3, padx=10, pady=10)
+        tk.Button(master, text="restart", fg = "deep pink",command=partial(backgroundprocess,b'p',''),font=("",20)).grid(row=5, column=2, padx=10, pady=10)
+        tk.Button(master, text="playlist終了", fg = "deep pink",command=partial(backgroundprocess,b'q',''),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
+        tk.Button(master, text="back", fg = "orange",command=partial(backgroundprocess,b'b',''),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
+        tk.Button(master, text="next", fg = "orange",command=partial(backgroundprocess,b'n',''),font=("",20)).grid(row=4, column=3, padx=10, pady=10)
 
         tk.Button(master, text="再生", fg = "navy",command=start_playthread,font=("",20)).grid(row=6, column=1, padx=10, pady=10)
         info.playtimeframe = tk.LabelFrame(master, text="再生時間",font=("",20))
@@ -478,12 +485,50 @@ class WinodwClass(tk.Frame):
         info.label.pack()
         getplaytime(master)
         tk.Button(master, text="プログラム終了", fg = "deep pink",command=lambda: master.destroy() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください'),font=("",20)).grid(row=6, column=3, padx=10, pady=10)
-        tk.Button(master, text="一時停止/再開", fg = "navy",command=partial(backgroundprocess,b'\r'),font=("",20)).grid(row=6, column=2, padx=10, pady=10)
+        tk.Button(master, text="一時停止/再開", fg = "navy",command=partial(backgroundprocess,b'\r',''),font=("",20)).grid(row=6, column=2, padx=10, pady=10)
 
-        tk.Button(master, text="ノーマル再生", fg = "purple",command=partial(backgroundprocess,b'v'),font=("",20)).grid(row=0, column=3, padx=10, pady=10)
-        tk.Button(master, text="シャッフル", fg = "purple",command=partial(backgroundprocess,b'z'),font=("",20)).grid(row=1, column=3, padx=10, pady=10)
-        tk.Button(master, text="フォルダリピート", fg = "purple",command=partial(backgroundprocess,b'x'),font=("",20)).grid(row=2, column=3, padx=10, pady=10)
-        tk.Button(master, text="1曲リピート", fg = "purple",command=partial(backgroundprocess,b'c'),font=("",20)).grid(row=3, column=3, padx=10, pady=10)
+        tk.Button(master, text="ノーマル再生", fg = "purple",command=partial(backgroundprocess,b'v',''),font=("",20)).grid(row=0, column=3, padx=10, pady=10)
+        tk.Button(master, text="シャッフル", fg = "purple",command=partial(backgroundprocess,b'z',''),font=("",20)).grid(row=1, column=3, padx=10, pady=10)
+        tk.Button(master, text="フォルダリピート", fg = "purple",command=partial(backgroundprocess,b'x',''),font=("",20)).grid(row=2, column=3, padx=10, pady=10)
+        tk.Button(master, text="1曲リピート", fg = "purple",command=partial(backgroundprocess,b'c',''),font=("",20)).grid(row=3, column=3, padx=10, pady=10)
+        scaleframe = ttk.Frame(master,padding=10)
+        first_label=tk.Label(scaleframe, text="first",font=("",20))
+        first_label.pack(side=tk.LEFT)
+        val = DoubleVar()
+        info.scalebar = ttk.Scale(
+            scaleframe,
+            #variable=val,
+            variable=val,
+            orient=HORIZONTAL,
+            length=700,
+            from_=0,
+            to=info.duration,
+            #command=lambda: backgroundprocess("scale",val.get()))
+            command=partial(backgroundprocess,val.get()))
+            #command=partial(backgroundprocess,b'up_much',''))
+            #command=lambda e: print('val:%4d' % val.get()))
+        pos_renew(master,scaleframe)
+        info.scalebar.pack(side=tk.LEFT)
+        last_label=tk.Label(scaleframe, text="last",font=("",20))
+        last_label.pack(side=tk.RIGHT)
+        #sc.grid(row=7, column=0,columnspan=3, sticky=(N, E, S, W))
+        scaleframe.grid(row=8,column=0,columnspan=4,sticky=(N, W, S, E))
+
+def pos_renew(root,scaleframe):
+    if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
+        info.scalebar.pack_forget()
+        val = DoubleVar(master=root,value=int((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))
+        info.scalebar = ttk.Scale(
+            scaleframe,
+            variable=val,
+            orient=HORIZONTAL,
+            length=700,
+            from_=0,
+            to=info.duration,
+            command=partial(backgroundprocess,val.get()))
+        info.scalebar.pack(side=tk.LEFT)
+    root.after(100,pos_renew,root,scaleframe)
+
 
 def window():
     info.root = Tk()
@@ -757,7 +802,7 @@ class PlayThread(threading.Thread):
             canvas.create_window((0,0), window=playlistframe, anchor=tk.NW, width=canvas.cget('width'))
 
             for i, target in enumerate(playlist):
-                plbtn=tk.Button(playlistframe, text=str(i+1)+":"+target, command=partial(backgroundprocess,i+1))
+                plbtn=tk.Button(playlistframe, text=str(i+1)+":"+target, command=partial(backgroundprocess,i+1,''))
                 playlist_label.append(plbtn)
                 plbtn.pack(fill=tk.X)
             while True:

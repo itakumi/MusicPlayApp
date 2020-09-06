@@ -17,6 +17,7 @@ import random
 import shutil
 from tkinter import messagebox
 from tkinter import filedialog
+from PIL import Image, ImageTk
 
 class AudioInformation:
     Key=0 #音程
@@ -41,6 +42,7 @@ class AudioInformation:
     targetname_1=None #フォルダ指定のentry
     targetname_2=None #ファイル指定のentry
     stop_flag=False
+    scalebar=None
 
 def NormalPlay_Set(KeyInput,SpeedInput):#標準再生
     KeyInput.delete(0,tkinter.END)
