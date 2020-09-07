@@ -17,7 +17,6 @@ import random
 import shutil
 from tkinter import messagebox
 from tkinter import filedialog
-from PIL import Image, ImageTk
 
 class AudioInformation:
     Key=0 #音程

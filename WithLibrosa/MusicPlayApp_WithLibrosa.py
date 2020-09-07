@@ -3,7 +3,7 @@ import librosa
 info=AudioInformation()
 
 def dirdialog_clicked():#フォルダ参照
-    iDir = os.path.abspath(os.path.dirname("__file__"))
+    iDir = os.path.abspath(os.path.dirname("__file__")+"../")
     iDirPath = filedialog.askdirectory(initialdir = iDir)
     info.targetname_0.delete(0,tkinter.END)
     info.targetname_2.delete(0,tkinter.END)
@@ -18,7 +18,7 @@ def dir_play(PlayListTkinter):#フォルダ再生
             #print("指定されたパスが存在しません")
 def filedialog_clicked():#ファイル参照
     fTyp = [("", "*")]
-    iFile = os.path.abspath(os.path.dirname("__file__"))
+    iFile = os.path.abspath(os.path.dirname("__file__")+"../")
     iFilePath = filedialog.askopenfilename(filetype = fTyp, initialdir = iFile)
     info.targetname_0.delete(0,tkinter.END)
     info.targetname_1.delete(0,tkinter.END)
@@ -52,7 +52,7 @@ def setcurrent():#カレントセット
     info.targetname_1.delete(0,tkinter.END)
     info.targetname_2.delete(0,tkinter.END)
     info.targetname_0.delete(0,tkinter.END)
-    info.targetname_0.insert(tkinter.END,"./")
+    info.targetname_0.insert(tkinter.END,info.basedirname)
 
 def KeySpeedRead(KeySpeedInput,KeyInput,SpeedInput):#最初のウィンドウにおいてキーと速度を読み込み時
     if KeyInput.get().replace(',', '').replace('.', '').replace('-', '').isnumeric() and SpeedInput.get().replace(',', '').replace('.', '').replace('-', '').isnumeric():
@@ -447,7 +447,7 @@ class WinodwClass(tk.Frame):
     def __init__(self,master):
         super().__init__(master)
         master.title("音楽再生アプリ") #タイトル作成
-        #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
+        master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
         tk.Button(master, text="pitch-1", fg = "red",command=partial(backgroundprocess,b'down_much',''),font=("",20)).grid(row=4, column=0, padx=10, pady=10)
         tk.Button(master, text="pitch-0.1", fg = "red",command=partial(backgroundprocess,b'down',''),font=("",20)).grid(row=3, column=0, padx=10, pady=10)
@@ -700,9 +700,12 @@ class PlayThread(threading.Thread):
             print("")
             playlistdirname=""
             playlistdirname="PythonMusicApp_Playlist"
+            shutil.copyfile(info.basedirname + "/lib/ffmpeg.exe", "./ffmpeg.exe")
+            shutil.copyfile(info.basedirname + "/lib/ffplay.exe", "./ffplay.exe")
+            shutil.copyfile(info.basedirname + "/lib/ffprobe.exe", "./ffprobe.exe")
             if os.path.exists(playlistdirname) and os.path.isdir(playlistdirname):
                 print(playlistdirname,"フォルダを発見しました")
-                print(" ファイルをチェックします")
+                print("ファイルをチェックします")
                 for f in glob.glob("./*"):
                     if (os.path.splitext(f)[1]=='.wav' or os.path.splitext(f)[1]=='.mp3' or os.path.splitext(f)[1]=='.m4a' or os.path.splitext(f)[1]=='.mp4') and os.path.isfile(os.path.split(f)[1]):
                         if os.path.exists(playlistdirname + "/" + os.path.splitext(f)[0].replace(' ','')+".wav"):
@@ -726,14 +729,14 @@ class PlayThread(threading.Thread):
                                     print("wavが既にあるため変換しません")
                                 else:
                                     print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
-                                    os.system("ffmpeg -i "+ os.path.split(f)[1].replace(' ','') + " " + playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
+                                    os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " + playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
                             elif os.path.splitext(f)[1]=='.mp4':
                                 print(os.path.split(f)[1],'→',end='')
                                 if os.path.exists(os.path.splitext(f)[0].replace(' ','')+".wav"):
                                     print("wavが既にあるため変換しません")
                                 else:
                                     print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
-                                    os.system("ffmpeg -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
+                                    os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
                 print("ファイルチェック完了!")
             else:
                 print("PlayListフォルダを作ります")
@@ -757,16 +760,19 @@ class PlayThread(threading.Thread):
                             print("wavが既にあるため変換しません")
                         else:
                             print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
-                            os.system("ffmpeg -i "+ os.path.split(f)[1].replace(' ','') + " " + playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
+                            os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " + playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
                     elif os.path.splitext(f)[1]=='.mp4':
                         print(os.path.split(f)[1],'→',end='')
                         if os.path.exists(os.path.splitext(f)[0].replace(' ','')+".wav"):
                             print("wavが既にあるため変換しません")
                         else:
                             print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
-                            os.system("ffmpeg -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
+                            os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
                 print("変換完了！")
             print("")
+            os.remove("./ffmpeg.exe")
+            os.remove("./ffplay.exe")
+            os.remove("./ffprobe.exe")
             print("playlistを作成します")
             os.chdir(playlistdirname)
             if len(playlist)!=0:
@@ -783,6 +789,8 @@ class PlayThread(threading.Thread):
             info.playlist_len=len(playlist)
             if info.playlist_len==0:
                 messagebox.showinfo('エラー', 'playlistの曲がありません')
+                os.chdir("../")
+                os.rmdir(playlistdirname)
                 #print("playlistの曲がありません")
                 info.thread_play=None
                 return
@@ -832,19 +840,18 @@ class PlayThread(threading.Thread):
                 if index==info.playlist_len:
                     break
         print("Playlistが終了しました")
+        info.thread_play=None
         info.label.pack_forget()
         info.label=tk.Label(info.playtimeframe, text='--s/--s',font=("",20))
         info.label.pack()
-        info.thread_play=None
 
 def start_windowthread():
     thread_window=WindowThread()
     thread_window.start()
 
 def start_playthread():
-    print(info.song)
-    info.song=None
     if info.thread_play is None:
+        info.song=None
         info.thread_play=PlayThread()
         info.thread_play.start()
     else:
