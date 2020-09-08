@@ -19,6 +19,7 @@ from tkinter import messagebox
 from tkinter import filedialog
 
 class AudioInformation:
+    outputdeviceindex=-1
     Key=0 #音程
     r12=1 #周波数に掛けると音程が変わる
     Quickness=1 #速度

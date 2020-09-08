@@ -75,6 +75,10 @@ def KeySpeedRead(KeySpeedInput,KeyInput,SpeedInput):#最初のウィンドウに
     else:
         messagebox.showinfo('エラー', 'KeyとSpeedはfloat型でお願いします')
         #print("KeyとSpeedはfloat型でお願いします")
+def OutputDeviceRead(outputdeviceInputClass,var):
+    info.outputdeviceindex=var.get()
+    print("読み込んだ後のoutputdeviceindex=",info.outputdeviceindex)
+    outputdeviceInputClass.destroy()
 
 class AudioFile:
         chunk_mul=128
@@ -92,7 +96,8 @@ class AudioFile:
                frames_per_buffer = self.buffer,
                #rate = int(self.wf.getframerate()*self.speed),
                rate = int(self.wf.getframerate()),
-               input = True,
+               output_device_index=info.outputdeviceindex,
+               input=False,
                output = True)
         def play(self):
             """ Play entire file """
@@ -185,6 +190,8 @@ class AudioFile:
                     #frames_per_buffer = self.chunk,
                     #rate = int(self.wf.getframerate()*self.speed),
                     rate = int(self.wf.getframerate()),
+                    output_device_index=info.outputdeviceindex,
+                    input=False,
                     output = True)
 def backgroundprocess(kb,scaleint):
     if isinstance(kb,int):#playlistの曲のボタンが押されたとき
@@ -665,7 +672,7 @@ class PlayThread(threading.Thread):
                 print("×が押されました")
                 info.thread_play=None
                 return
-        except:
+        except e:
             messagebox.showinfo('エラー', '予期せぬエラーが発生しました(これを見たときは至急私まで)')
             #print("何らかのエラーが発生しました")
             #print(e)
@@ -700,10 +707,10 @@ class PlayThread(threading.Thread):
             print("")
             playlistdirname=""
             playlistdirname="PythonMusicApp_Playlist"
-            shutil.copyfile(info.basedirname + "/lib/ffmpeg.exe", "./ffmpeg.exe")
-            shutil.copyfile(info.basedirname + "/lib/ffplay.exe", "./ffplay.exe")
-            shutil.copyfile(info.basedirname + "/lib/ffprobe.exe", "./ffprobe.exe")
             if os.path.exists(playlistdirname) and os.path.isdir(playlistdirname):
+                shutil.copyfile(info.basedirname + "/lib/ffmpeg.exe", "./ffmpeg.exe")
+                shutil.copyfile(info.basedirname + "/lib/ffplay.exe", "./ffplay.exe")
+                shutil.copyfile(info.basedirname + "/lib/ffprobe.exe", "./ffprobe.exe")
                 print(playlistdirname,"フォルダを発見しました")
                 print("ファイルをチェックします")
                 for f in glob.glob("./*"):
@@ -737,8 +744,14 @@ class PlayThread(threading.Thread):
                                 else:
                                     print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
                                     os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
+                os.remove("./ffmpeg.exe")
+                os.remove("./ffplay.exe")
+                os.remove("./ffprobe.exe")
                 print("ファイルチェック完了!")
             else:
+                shutil.copyfile(info.basedirname + "/lib/ffmpeg.exe", "./ffmpeg.exe")
+                shutil.copyfile(info.basedirname + "/lib/ffplay.exe", "./ffplay.exe")
+                shutil.copyfile(info.basedirname + "/lib/ffprobe.exe", "./ffprobe.exe")
                 print("PlayListフォルダを作ります")
                 os.mkdir(playlistdirname)
                 print("対象のファイルをwavへ変換します")
@@ -768,11 +781,11 @@ class PlayThread(threading.Thread):
                         else:
                             print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
                             os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
+                os.remove("./ffmpeg.exe")
+                os.remove("./ffplay.exe")
+                os.remove("./ffprobe.exe")
                 print("変換完了！")
             print("")
-            os.remove("./ffmpeg.exe")
-            os.remove("./ffplay.exe")
-            os.remove("./ffprobe.exe")
             print("playlistを作成します")
             os.chdir(playlistdirname)
             if len(playlist)!=0:
@@ -886,6 +899,33 @@ class KeySpeedInputClass(tk.Frame):
                             command=lambda:NormalPlay_Set(KeyInput,SpeedInput))
         NormalPlay.grid(row=3, column=0)
 
+class outputdeviceInputClass(tk.Frame):
+    def __init__(self,master,outputdevicelist):
+        super().__init__(master)
+        master.title("出力デバイスの選択")
+        var = tk.IntVar()
+        var.set(outputdevicelist[0]['index'])
+
+        """
+        rdo1 = tk.Radiobutton(master, value=outputdevicelist[0]['index'], variable=var, text=outputdevicelist[0]['name'])
+        rdo1.pack(side='top')
+
+        rdo2 = tk.Radiobutton(master, value=outputdevicelist[1]['index'], variable=var, text=outputdevicelist[1]['name'])
+        rdo2.pack(side='top')
+
+        rdo3 = tk.Radiobutton(master, value=outputdevicelist[2]['index'], variable=var, text=outputdevicelist[2]['name'])
+        rdo3.pack(side='top')
+
+        rdo4 = tk.Radiobutton(master, value=outputdevicelist[3]['index'], variable=var, text=outputdevicelist[3]['name'])
+        rdo4.pack(side='top')
+        """
+        for i in range(len(outputdevicelist)):
+            tk.Radiobutton(master, value=outputdevicelist[i]['index'], variable=var, text=outputdevicelist[i]['name']).pack(side='top')
+        DeviceReadButton=tk.Button(master, height=1, width=10, text="OK", command = lambda:OutputDeviceRead(master,var))
+        DeviceReadButton.pack(side='top')
+        #for i in range(outputdevicelist):
+
+
 if __name__ == "__main__":
     KeySpeedInputtk = Tk()
     KeySpeedInput=KeySpeedInputClass(master=KeySpeedInputtk)
@@ -893,6 +933,35 @@ if __name__ == "__main__":
     info.Key=round(info.Key,1)
     info.Quickness=round(info.Quickness,2)
     info.basedirname=os.path.dirname(os.path.abspath("__file__"))
+    p=pyaudio.PyAudio()
+    outputdevicelist=[]
+    for index in range(0,p.get_device_count()):
+        #print(p.get_device_info_by_index(index))
+        #print("type=",type(p.get_device_info_by_index(index)))
+        #print("name=",p.get_device_info_by_index(index)['name'])
+        #print("hostApi=",p.get_device_info_by_index(index)['hostApi'])
+        #print("maxInputChannels=",p.get_device_info_by_index(index)['maxInputChannels'])
+        #print("maxOutputChannels=",p.get_device_info_by_index(index)['maxOutputChannels'])
+        if p.get_device_info_by_index(index)['hostApi']==0 and p.get_device_info_by_index(index)['maxOutputChannels']==2:
+            outputdevicelist.append(p.get_device_info_by_index(index))
+    #print("list[0]は",outputdevicelist[0])
+    #print("list[1]は",outputdevicelist[1])
+    #print("list[2]は",outputdevicelist[2])
+    #print("list[3]は",outputdevicelist[3])
+    #print(len(outputdevicelist))
+    print("出力デバイスを入力")
+    if len(outputdevicelist)==0:
+        print("出力デバイスがありません。プレイヤーを開始できません")
+    elif len(outputdevicelist)==1:
+        info.outputdeviceindex=outputdevicelist[0]['index']
+    elif len(outputdevicelist)>=2:
+        print("出力デバイスの選択")
+        outputdeviceInputtk=Tk()
+        outputdeviceInput=outputdeviceInputClass(master=outputdeviceInputtk,outputdevicelist=outputdevicelist)
+        outputdeviceInput.mainloop()
+
+    #info.outputdeviceindex=int(input())
+    print("何で",info.outputdeviceindex)
     help()
     r = 2**(1/12)
     info.r12=(2**(1/12))**np.float(info.Key)
