@@ -41,8 +41,8 @@ class AudioInformation:
     targetname_0=None #パス指定のentry
     targetname_1=None #フォルダ指定のentry
     targetname_2=None #ファイル指定のentry
+    scalebar=None #曲の位置を示すスケールバー
     stop_flag=False
-    scalebar=None
 
 def NormalPlay_Set(KeyInput,SpeedInput):#標準再生
     KeyInput.delete(0,tkinter.END)

@@ -15,7 +15,6 @@ def dir_play(PlayListTkinter):#フォルダ再生
         PlayListTkinter.quit()
     else:
         messagebox.showinfo('エラー', '指定されたパスが存在しません')
-            #print("指定されたパスが存在しません")
 def filedialog_clicked():#ファイル参照
     fTyp = [("", "*")]
     iFile = os.path.abspath(os.path.dirname("__file__")+"../")
@@ -30,14 +29,11 @@ def file_play(PlayListTkinter):#ファイル再生
         PlayListTkinter.quit()
     else:
         messagebox.showinfo('エラー', '指定されたパスが存在しません')
-        #print("指定されたパスが存在しません")
 def getTextInput(PlayListTkinter):#パス指定再生
     if info.targetname_0.get()=='./' or os.path.isdir(info.targetname_0.get()):
         info.mode=0
         PlayListTkinter.quit()
     elif os.path.isfile(info.targetname_0.get()):
-        info.mode=0
-        print("fileplaymodeに移ります")
         info.mode=2
         info.targetname_2.delete(0,tkinter.END)
         info.targetname_2.insert(tkinter.END,info.targetname_0.get())
@@ -47,7 +43,6 @@ def getTextInput(PlayListTkinter):#パス指定再生
         PlayListTkinter.quit()
     else:
         messagebox.showinfo('エラー', '指定されたパスが存在しません')
-        #print("指定されたパスが存在しません")
 def setcurrent():#カレントセット
     info.targetname_1.delete(0,tkinter.END)
     info.targetname_2.delete(0,tkinter.END)
@@ -71,13 +66,10 @@ def KeySpeedRead(KeySpeedInput,KeyInput,SpeedInput):#最初のウィンドウに
                 messagebox.showinfo('エラー', 'Speedは0.01以上でお願いします')
         else:
             messagebox.showinfo('エラー', 'Keyは-12~12でお願いします')
-            #print("Keyは-12~12でお願いします.")
     else:
         messagebox.showinfo('エラー', 'KeyとSpeedはfloat型でお願いします')
-        #print("KeyとSpeedはfloat型でお願いします")
 def OutputDeviceRead(outputdeviceInputClass,var):
     info.outputdeviceindex=var.get()
-    print("読み込んだ後のoutputdeviceindex=",info.outputdeviceindex)
     outputdeviceInputClass.destroy()
 
 class AudioFile:
@@ -92,9 +84,7 @@ class AudioFile:
            self.stream = self.p.open(
                format = self.p.get_format_from_width(self.wf.getsampwidth()),
                channels = self.wf.getnchannels(),
-               #frames_per_buffer = self.chunk,
                frames_per_buffer = self.buffer,
-               #rate = int(self.wf.getframerate()*self.speed),
                rate = int(self.wf.getframerate()),
                output_device_index=info.outputdeviceindex,
                input=False,
@@ -124,11 +114,9 @@ class AudioFile:
                         data = self.wf.readframes(int(self.chunk))
                         nextpos=self.wf.tell()
                         self.wf.setpos(currentpos)
-                        #if info.Quickness/info.r12 != 1 and len(data)!=0:
                         if (info.Quickness!=1 or info.r12 != 1) and len(data)!=0:
                             data = np.frombuffer(data,dtype="int16")
                             data=data.astype(np.float64)
-                            #print("Key=",info.Key,"   Quickness=",info.Quickness,"で変換")
                             if info.Key!=0:
                                 data = librosa.effects.pitch_shift(data,self.wf.getframerate(),info.Key)
                             #data = librosa.effects.time_stretch(data,info.r12/info.Quickness)#/info.r12)
@@ -139,7 +127,6 @@ class AudioFile:
                         size=1024
                         if currentpos+(self.chunk)<info.last:
                             for i in range(int(len(data)/(size*4))+1):
-                                #print(i,end='')
                                 if info.quit:
                                     break
                                 if info.renew_flag:
@@ -187,8 +174,6 @@ class AudioFile:
                     format = self.p.get_format_from_width(self.wf.getsampwidth()),
                     channels = self.wf.getnchannels(),
                     frames_per_buffer = self.buffer,
-                    #frames_per_buffer = self.chunk,
-                    #rate = int(self.wf.getframerate()*self.speed),
                     rate = int(self.wf.getframerate()),
                     output_device_index=info.outputdeviceindex,
                     input=False,
@@ -201,7 +186,6 @@ def backgroundprocess(kb,scaleint):
     elif isinstance(kb,float):
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             info.song.wf.setpos(int(info.head+info.onesecframes*float(scaleint)))
             info.renew_flag=True
@@ -210,7 +194,6 @@ def backgroundprocess(kb,scaleint):
         if kb==b'K':#Left
             if info.Quickness<=0.1:
                 messagebox.showinfo('エラー', 'これ以上は速度を落とせません')
-                #print("これ以上は速度を落とせません")
             else:
                 info.Quickness-=0.1
                 info.speed_label.grid_forget()
@@ -242,16 +225,13 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='\r':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             if info.song.stream.is_active():
                 messagebox.showinfo('一時停止', '一時停止します')
-                #print("一時停止します")
                 info.stop_flag=True
                 info.song.stream.stop_stream()
             else:
                 messagebox.showinfo('再開', '再開します')
-                #print("再開します")
                 info.stop_flag=False
                 info.song.stream.start_stream()
             info.renew_flag=True
@@ -259,7 +239,6 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='n':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             print("next")
             info.back_flag=False
@@ -270,7 +249,6 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='p':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             print("最初から")
             info.song.wf.rewind()
@@ -278,7 +256,6 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='b':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             info.back_flag=True
             info.shuffle_flag=False
@@ -290,7 +267,6 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='g':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             if (info.song.wf.tell()+(info.onesecframes*10))>info.last:
                 info.song.wf.setpos(info.last-1)
@@ -300,7 +276,6 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='f':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             if (info.song.wf.tell()+(info.onesecframes*3))>info.last:
                 info.song.wf.setpos(info.last-1)
@@ -310,7 +285,6 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='d':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             if (info.song.wf.tell()-(info.onesecframes*3))<info.head:
                 info.song.wf.setpos(info.head)
@@ -320,7 +294,6 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='s':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
-            #print("音楽を開始してください")
         else:
             if (info.song.wf.tell()-(info.onesecframes*10))<info.head:
                 info.song.wf.setpos(info.head)
@@ -374,7 +347,6 @@ def backgroundprocess(kb,scaleint):
     elif kb==b'left':#Left
         if round(info.Quickness,2)==0.1:
             messagebox.showinfo('エラー', 'これ以上は速度を落とせません')
-            #print("これ以上は速度を落とせません")
         else:
             info.Quickness-=0.1
             info.speed_label.grid_forget()
@@ -384,7 +356,6 @@ def backgroundprocess(kb,scaleint):
     elif kb==b'left_little':#Left
         if round(info.Quickness,2)==0.01:
             messagebox.showinfo('エラー', 'これ以上は速度を落とせません')
-            #print("これ以上は速度を落とせません")
         else:
             info.Quickness-=0.01
             info.speed_label.grid_forget()
@@ -448,9 +419,9 @@ def playback(filename):
         info.song.stream.close()
         info.song.p.terminate()
         messagebox.showinfo('強制終了', '強制終了します')
-        #print("強制終了します")
         sys.exit()
 class WinodwClass(tk.Frame):
+    PlayImage=None
     def __init__(self,master):
         super().__init__(master)
         master.title("音楽再生アプリ") #タイトル作成
@@ -463,8 +434,6 @@ class WinodwClass(tk.Frame):
         tk.Button(master, text="pitch+1", fg = "red",command=partial(backgroundprocess,b'up_much',''),font=("",20)).grid(row=0, column=0, padx=10, pady=10)
         info.pitch_label=tk.Label(master, text="Pitch="+str(round(info.Key,2)),font=("",20))
         info.pitch_label.grid(row=5,column=0)
-        #master.grid_rowconfigure(1, weight=1)
-        #master.grid_columnconfigure(1, weight=1)
         tk.Button(master, text="pitch_reset", fg = "red",command=partial(backgroundprocess,b'e',''),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
 
         tk.Button(master, text="speed+10%", fg = "blue",command=partial(backgroundprocess,b'right',''),font=("",20)).grid(row=0, column=1, padx=10, pady=10)
@@ -484,9 +453,7 @@ class WinodwClass(tk.Frame):
         tk.Button(master, text="playlist終了", fg = "deep pink",command=partial(backgroundprocess,b'q',''),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
         tk.Button(master, text="back", fg = "orange",command=partial(backgroundprocess,b'b',''),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
         tk.Button(master, text="next", fg = "orange",command=partial(backgroundprocess,b'n',''),font=("",20)).grid(row=4, column=3, padx=10, pady=10)
-        #playimage = PhotoImage("再生ボタン.png")
-        #playimage = playimage.zoom(100)
-        #tk.Button(master, text="再生", fg = "navy",image=playimage,command=start_playthread,font=("",20)).grid(row=6, column=1,sticky="NWES", padx=10, pady=10)
+
         tk.Button(master, text="再生", fg = "navy",command=start_playthread,font=("",20)).grid(row=6, column=1, padx=10, pady=10)
         info.playtimeframe = tk.LabelFrame(master, text="再生時間",font=("",20))
         info.playtimeframe.grid(row=6, padx=10, pady=10)
@@ -506,21 +473,16 @@ class WinodwClass(tk.Frame):
         val = DoubleVar()
         info.scalebar = ttk.Scale(
             scaleframe,
-            #variable=val,
             variable=val,
             orient=HORIZONTAL,
             length=700,
             from_=0,
             to=info.duration,
-            #command=lambda: backgroundprocess("scale",val.get()))
             command=partial(backgroundprocess,val.get()))
-            #command=partial(backgroundprocess,b'up_much',''))
-            #command=lambda e: print('val:%4d' % val.get()))
         pos_renew(master,scaleframe)
         info.scalebar.pack(side=tk.LEFT)
         last_label=tk.Label(scaleframe, text="last",font=("",20))
         last_label.pack(side=tk.RIGHT)
-        #sc.grid(row=7, column=0,columnspan=3, sticky=(N, E, S, W))
         scaleframe.grid(row=8,column=0,columnspan=4,sticky=(N, W, S, E))
 
 def pos_renew(root,scaleframe):
@@ -538,10 +500,9 @@ def pos_renew(root,scaleframe):
         info.scalebar.pack(side=tk.LEFT)
     root.after(100,pos_renew,root,scaleframe)
 
-
 def window():
     info.root = Tk()
-    info.root.configure(bg='gold')
+    info.root.configure(bg='gray')
     rootA = WinodwClass(master = info.root)
     rootA.mainloop()
 
@@ -651,6 +612,8 @@ class PlayThread(threading.Thread):
             PlayListTkintertk = Tk()
             PlayListTkinter=PlayListTkinterClass(master=PlayListTkintertk)
             PlayListTkinter.mainloop()
+            #thread_PlayListTkinter=PlayListTkinterThread()
+            #thread_PlayListTkinter.start()
             if info.mode==0:
                 if info.targetname_0.get()=='./':
                     os.chdir(info.basedirname)
@@ -672,10 +635,8 @@ class PlayThread(threading.Thread):
                 print("×が押されました")
                 info.thread_play=None
                 return
-        except e:
+        except:
             messagebox.showinfo('エラー', '予期せぬエラーが発生しました(これを見たときは至急私まで)')
-            #print("何らかのエラーが発生しました")
-            #print(e)
         else:
             if info.mode==2:
                 playlistdirname=""
@@ -744,9 +705,10 @@ class PlayThread(threading.Thread):
                                 else:
                                     print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
                                     os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
-                os.remove("./ffmpeg.exe")
-                os.remove("./ffplay.exe")
-                os.remove("./ffprobe.exe")
+                if os.getcwd()!= info.basedirname:
+                    os.remove("./ffmpeg.exe")
+                    os.remove("./ffplay.exe")
+                    os.remove("./ffprobe.exe")
                 print("ファイルチェック完了!")
             else:
                 shutil.copyfile(info.basedirname + "/lib/ffmpeg.exe", "./ffmpeg.exe")
@@ -781,9 +743,10 @@ class PlayThread(threading.Thread):
                         else:
                             print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
                             os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
-                os.remove("./ffmpeg.exe")
-                os.remove("./ffplay.exe")
-                os.remove("./ffprobe.exe")
+                if os.getcwd()!= info.basedirname:
+                    os.remove("./ffmpeg.exe")
+                    os.remove("./ffplay.exe")
+                    os.remove("./ffprobe.exe")
                 print("変換完了！")
             print("")
             print("playlistを作成します")
@@ -804,7 +767,6 @@ class PlayThread(threading.Thread):
                 messagebox.showinfo('エラー', 'playlistの曲がありません')
                 os.chdir("../")
                 os.rmdir(playlistdirname)
-                #print("playlistの曲がありません")
                 info.thread_play=None
                 return
             # Canvas Widget を生成
@@ -813,14 +775,16 @@ class PlayThread(threading.Thread):
             playlistframe = tk.Frame(canvas)
             # Scrollbar を生成して配置
             bar_ver = tk.Scrollbar(info.root, orient=tk.VERTICAL)
-            bar_ver.grid(row=1, column=5,rowspan=5, padx=10, pady=10,sticky="NS")
-            bar_ver.config(command=canvas.yview)
+            bar_ver.grid(row=1, column=5,rowspan=5, pady=10,sticky="NS")
+            #bar_ver = tk.Scrollbar(playlistframe, orient=tk.VERTICAL)
+            #bar_ver.pack(side='right',fill=tk.BOTH)
 
             # Canvas Widget を配置
             canvas.config(yscrollcommand=bar_ver.set)
             canvas.config(scrollregion=(0,0,400,27*info.playlist_len)) #スクロール範囲
-            canvas.grid(row=1, column=4, rowspan=5,padx=10, pady=10,sticky="WES")
+            canvas.grid(row=1, column=4, rowspan=5,padx=10, pady=10,sticky="WNES")
 
+            bar_ver.config(command=canvas.yview)
             # Frame Widgetを Canvas Widget上に配置
             canvas.create_window((0,0), window=playlistframe, anchor=tk.NW, width=canvas.cget('width'))
 
@@ -869,7 +833,7 @@ def start_playthread():
         info.thread_play.start()
     else:
         messagebox.showinfo('エラー', '既に再生しています')
-        #print("既に再生しています")
+
 class KeySpeedInputClass(tk.Frame):
     def __init__(self,master):
         super().__init__(master)
@@ -906,25 +870,10 @@ class outputdeviceInputClass(tk.Frame):
         var = tk.IntVar()
         var.set(outputdevicelist[0]['index'])
 
-        """
-        rdo1 = tk.Radiobutton(master, value=outputdevicelist[0]['index'], variable=var, text=outputdevicelist[0]['name'])
-        rdo1.pack(side='top')
-
-        rdo2 = tk.Radiobutton(master, value=outputdevicelist[1]['index'], variable=var, text=outputdevicelist[1]['name'])
-        rdo2.pack(side='top')
-
-        rdo3 = tk.Radiobutton(master, value=outputdevicelist[2]['index'], variable=var, text=outputdevicelist[2]['name'])
-        rdo3.pack(side='top')
-
-        rdo4 = tk.Radiobutton(master, value=outputdevicelist[3]['index'], variable=var, text=outputdevicelist[3]['name'])
-        rdo4.pack(side='top')
-        """
         for i in range(len(outputdevicelist)):
             tk.Radiobutton(master, value=outputdevicelist[i]['index'], variable=var, text=outputdevicelist[i]['name']).pack(side='top')
         DeviceReadButton=tk.Button(master, height=1, width=10, text="OK", command = lambda:OutputDeviceRead(master,var))
         DeviceReadButton.pack(side='top')
-        #for i in range(outputdevicelist):
-
 
 if __name__ == "__main__":
     KeySpeedInputtk = Tk()
@@ -936,19 +885,8 @@ if __name__ == "__main__":
     p=pyaudio.PyAudio()
     outputdevicelist=[]
     for index in range(0,p.get_device_count()):
-        #print(p.get_device_info_by_index(index))
-        #print("type=",type(p.get_device_info_by_index(index)))
-        #print("name=",p.get_device_info_by_index(index)['name'])
-        #print("hostApi=",p.get_device_info_by_index(index)['hostApi'])
-        #print("maxInputChannels=",p.get_device_info_by_index(index)['maxInputChannels'])
-        #print("maxOutputChannels=",p.get_device_info_by_index(index)['maxOutputChannels'])
         if p.get_device_info_by_index(index)['hostApi']==0 and p.get_device_info_by_index(index)['maxOutputChannels']==2:
             outputdevicelist.append(p.get_device_info_by_index(index))
-    #print("list[0]は",outputdevicelist[0])
-    #print("list[1]は",outputdevicelist[1])
-    #print("list[2]は",outputdevicelist[2])
-    #print("list[3]は",outputdevicelist[3])
-    #print(len(outputdevicelist))
     print("出力デバイスを入力")
     if len(outputdevicelist)==0:
         print("出力デバイスがありません。プレイヤーを開始できません")
@@ -959,9 +897,6 @@ if __name__ == "__main__":
         outputdeviceInputtk=Tk()
         outputdeviceInput=outputdeviceInputClass(master=outputdeviceInputtk,outputdevicelist=outputdevicelist)
         outputdeviceInput.mainloop()
-
-    #info.outputdeviceindex=int(input())
-    print("何で",info.outputdeviceindex)
     help()
     r = 2**(1/12)
     info.r12=(2**(1/12))**np.float(info.Key)
