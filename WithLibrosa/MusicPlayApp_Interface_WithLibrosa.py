@@ -17,6 +17,7 @@ import random
 import shutil
 from tkinter import messagebox
 from tkinter import filedialog
+from PIL import Image, ImageTk
 
 class AudioInformation:
     outputdeviceindex=-1
@@ -36,13 +37,14 @@ class AudioInformation:
     back_flag,shuffle_flag,directory_repeat_flag,one_repeat_flag=False,False,False,False #再生方法の変更
     next_play_index=0 #GUIから選択したときにインデックスを取得
     onesecframes=None #1秒当たりのフレーム数
-    pitch_label,speed_label=None,None #音程と速度のラベル
     label,playtimeframe=None,None #再生時間のラベル
     targetname_0=None #パス指定のentry
     targetname_1=None #フォルダ指定のentry
     targetname_2=None #ファイル指定のentry
     scalebar=None #曲の位置を示すスケールバー
     stop_flag=False
+    pitch_entry,speed_entry=None,None
+    volume=100
 
 def NormalPlay_Set(KeyInput,SpeedInput):#標準再生
     KeyInput.delete(0,tkinter.END)

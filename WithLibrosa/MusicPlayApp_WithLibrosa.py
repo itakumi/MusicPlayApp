@@ -52,7 +52,7 @@ def setcurrent():#カレントセット
 def KeySpeedRead(KeySpeedInput,KeyInput,SpeedInput):#最初のウィンドウにおいてキーと速度を読み込み時
     if KeyInput.get().replace(',', '').replace('.', '').replace('-', '').isnumeric() and SpeedInput.get().replace(',', '').replace('.', '').replace('-', '').isnumeric():
         try:
-            round(float(SpeedInput.get()),2)
+            round(float(KeyInput.get()),2)
             round(float(SpeedInput.get()),2)
         except:
             messagebox.showinfo('エラー', 'float型として適切ではありません')
@@ -114,7 +114,7 @@ class AudioFile:
                         data = self.wf.readframes(int(self.chunk))
                         nextpos=self.wf.tell()
                         self.wf.setpos(currentpos)
-                        if (info.Quickness!=1 or info.r12 != 1) and len(data)!=0:
+                        if len(data)!=0:
                             data = np.frombuffer(data,dtype="int16")
                             data=data.astype(np.float64)
                             if info.Key!=0:
@@ -122,8 +122,10 @@ class AudioFile:
                             #data = librosa.effects.time_stretch(data,info.r12/info.Quickness)#/info.r12)
                             if info.Quickness!=1:
                                 data = librosa.effects.time_stretch(data,info.Quickness)
+                            data*=round(float(info.volume),2)/100
                             data = data.astype(np.int16)
                             data = np.ndarray.tobytes(data)
+                        #data*=info.volume
                         size=1024
                         if currentpos+(self.chunk)<info.last:
                             for i in range(int(len(data)/(size*4))+1):
@@ -178,7 +180,7 @@ class AudioFile:
                     output_device_index=info.outputdeviceindex,
                     input=False,
                     output = True)
-def backgroundprocess(kb,scaleint):
+def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_button=None,one_repeat_button=None,windowroot=None):
     if isinstance(kb,int):#playlistの曲のボタンが押されたとき
         info.next_play_index=kb
         info.back_flag=False
@@ -196,30 +198,26 @@ def backgroundprocess(kb,scaleint):
                 messagebox.showinfo('エラー', 'これ以上は速度を落とせません')
             else:
                 info.Quickness-=0.1
-                info.speed_label.grid_forget()
-                info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-                info.speed_label.grid(row=5,column=1)
+                info.speed_entry.delete(0,tkinter.END)
+                info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
                 print("Speed=",round(info.Quickness,3))
         elif kb==b'H':#Up
             info.Key+=0.1
             info.r12=r**np.float(info.Key)
-            info.pitch_label.grid_forget()
-            info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-            info.pitch_label.grid(row=5,column=0)
+            info.pitch_entry.delete(0,tkinter.END)
+            info.pitch_entry.insert(tkinter.END,round(info.Key,2))
             info.renew_flag=True
             print("Key=",round(info.Key,2))
         elif kb==b'M':#Right
             info.Quickness+=0.1
-            info.speed_label.grid_forget()
-            info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-            info.speed_label.grid(row=5,column=1)
+            info.speed_entry.delete(0,tkinter.END)
+            info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
             print("Speed=",round(info.Quickness,3))
         elif kb==b'P':#Down
             info.Key-=0.1
             info.r12=r**np.float(info.Key)
-            info.pitch_label.grid_forget()
-            info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-            info.pitch_label.grid(row=5,column=0)
+            info.pitch_entry.delete(0,tkinter.END)
+            info.pitch_entry.insert(tkinter.END,round(info.Key,2))
             info.renew_flag=True
             print("Key=",round(info.Key,2))
     elif kb.decode()=='\r':
@@ -242,9 +240,6 @@ def backgroundprocess(kb,scaleint):
         else:
             print("next")
             info.back_flag=False
-            info.shuffle_flag=False
-            info.directory_repeat_flag=False
-            info.one_repeat_flag=False
             info.quit=True
     elif kb.decode()=='p':
         if info.thread_play is None or info.song is None:
@@ -261,6 +256,9 @@ def backgroundprocess(kb,scaleint):
             info.shuffle_flag=False
             info.directory_repeat_flag=False
             info.one_repeat_flag=False
+            shuffle_button['bg']='SystemButtonFace'
+            directory_repeat_button['bg']='SystemButtonFace'
+            one_repeat_button['bg']='SystemButtonFace'
             info.quit=True
     elif kb.decode()=='h':
         help()
@@ -277,19 +275,19 @@ def backgroundprocess(kb,scaleint):
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
         else:
-            if (info.song.wf.tell()+(info.onesecframes*3))>info.last:
+            if (info.song.wf.tell()+(info.onesecframes*5))>info.last:
                 info.song.wf.setpos(info.last-1)
             else:
-                info.song.wf.setpos(info.song.wf.tell()+int(info.onesecframes*3))
+                info.song.wf.setpos(info.song.wf.tell()+int(info.onesecframes*5))
             info.renew_flag=True
     elif kb.decode()=='d':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
         else:
-            if (info.song.wf.tell()-(info.onesecframes*3))<info.head:
+            if (info.song.wf.tell()-(info.onesecframes*5))<info.head:
                 info.song.wf.setpos(info.head)
             else:
-                info.song.wf.setpos(info.song.wf.tell()-int(info.onesecframes*3))
+                info.song.wf.setpos(info.song.wf.tell()-int(info.onesecframes*5))
             info.renew_flag=True
     elif kb.decode()=='s':
         if info.thread_play is None or info.song is None:
@@ -303,116 +301,150 @@ def backgroundprocess(kb,scaleint):
     elif kb.decode()=='e':
         info.Key=0
         info.r12=1
-        info.pitch_label.grid_forget()
-        info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0)
+        info.pitch_entry.delete(0,tkinter.END)
+        info.pitch_entry.insert(tkinter.END,round(info.Key,2))
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
     elif kb.decode()=='r':
         info.Quickness=1
-        info.speed_label.grid_forget()
-        info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1)
+        info.speed_entry.delete(0,tkinter.END)
+        info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
         print("Speed=",round(info.Quickness,3))
     elif kb.decode()=='q':
-        if info.song is not None:
+        if info.song is not None and info.thread_play is not None:
             info.next_play_index=info.playlist_len+1
             info.back_flag=False
             info.quit=True
+        elif info.thread_play is None:
+            windowroot.destroy()
+        else:
+            messagebox.showinfo('エラー', 'PlayListを終了させてください')
     elif kb.decode()=='z':
-        print("シャッフル再生")
-        info.back_flag=False
-        info.shuffle_flag=True
-        info.directory_repeat_flag=False
-        info.one_repeat_flag=False
+        if info.shuffle_flag:
+            print("ノーマル再生")
+            info.back_flag=False
+            info.shuffle_flag=False
+            info.directory_repeat_flag=False
+            info.one_repeat_flag=False
+            shuffle_button['bg']='SystemButtonFace'
+            directory_repeat_button['bg']='SystemButtonFace'
+            one_repeat_button['bg']='SystemButtonFace'
+        else:
+            print("シャッフル再生")
+            info.back_flag=False
+            info.shuffle_flag=True
+            info.directory_repeat_flag=False
+            info.one_repeat_flag=False
+            shuffle_button['bg']='black'
+            directory_repeat_button['bg']='SystemButtonFace'
+            one_repeat_button['bg']='SystemButtonFace'
     elif kb.decode()=='x':
-        print("フォルダリピート")
-        info.back_flag=False
-        info.shuffle_flag=False
-        info.directory_repeat_flag=True
-        info.one_repeat_flag=False
+        if info.directory_repeat_flag:
+            print("ノーマル再生")
+            info.back_flag=False
+            info.shuffle_flag=False
+            info.directory_repeat_flag=False
+            info.one_repeat_flag=False
+            shuffle_button['bg']='SystemButtonFace'
+            directory_repeat_button['bg']='SystemButtonFace'
+            one_repeat_button['bg']='SystemButtonFace'
+        else:
+            print("フォルダリピート")
+            info.back_flag=False
+            info.shuffle_flag=False
+            info.directory_repeat_flag=True
+            info.one_repeat_flag=False
+            shuffle_button['bg']='SystemButtonFace'
+            directory_repeat_button['bg']='black'
+            one_repeat_button['bg']='SystemButtonFace'
     elif kb.decode()=='c':
-        print("1曲リピート")
-        info.back_flag=False
-        info.shuffle_flag=False
-        info.directory_repeat_flag=False
-        info.one_repeat_flag=True
-    elif kb.decode()=='v':
-        print("ノーマル再生")
-        info.back_flag=False
-        info.shuffle_flag=False
-        info.directory_repeat_flag=False
-        info.one_repeat_flag=False
+        if info.one_repeat_flag:
+            print("ノーマル再生")
+            info.back_flag=False
+            info.shuffle_flag=False
+            info.directory_repeat_flag=False
+            info.one_repeat_flag=False
+            shuffle_button['bg']='SystemButtonFace'
+            directory_repeat_button['bg']='SystemButtonFace'
+            one_repeat_button['bg']='SystemButtonFace'
+        else:
+            print("1曲リピート")
+            info.back_flag=False
+            info.shuffle_flag=False
+            info.directory_repeat_flag=False
+            info.one_repeat_flag=True
+            shuffle_button['bg']='SystemButtonFace'
+            directory_repeat_button['bg']='SystemButtonFace'
+            one_repeat_button['bg']='black'
     elif kb==b'left':#Left
         if round(info.Quickness,2)==0.1:
             messagebox.showinfo('エラー', 'これ以上は速度を落とせません')
         else:
             info.Quickness-=0.1
-            info.speed_label.grid_forget()
-            info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-            info.speed_label.grid(row=5,column=1)
+            info.speed_entry.delete(0,tkinter.END)
+            info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
             print("Speed=",round(info.Quickness,3))
-    elif kb==b'left_little':#Left
-        if round(info.Quickness,2)==0.01:
-            messagebox.showinfo('エラー', 'これ以上は速度を落とせません')
-        else:
-            info.Quickness-=0.01
-            info.speed_label.grid_forget()
-            info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-            info.speed_label.grid(row=5,column=1)
-            print("Speed=",round(info.Quickness,3))
-    elif kb==b'up':#Up
-        info.Key+=0.1
-        info.r12=r**np.float(info.Key)
-        info.pitch_label.grid_forget()
-        info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0)
-        if info.thread_play is not None:
-            info.renew_flag=True
-        print("Key=",round(info.Key,2))
     elif kb==b'up_much':#Up
         info.Key+=1.0
         info.r12=r**np.float(info.Key)
-        info.pitch_label.grid_forget()
-        info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0)
+        info.pitch_entry.delete(0,tkinter.END)
+        info.pitch_entry.insert(tkinter.END,round(info.Key,2))
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
     elif kb==b'right':#Right
         info.Quickness+=0.1
-        info.speed_label.grid_forget()
-        info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1)
+        info.speed_entry.delete(0,tkinter.END)
+        info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
         print("Speed=",round(info.Quickness,3))
-    elif kb==b'right_little':#Right
-        info.Quickness+=0.01
-        info.speed_label.grid_forget()
-        info.speed_label=tk.Label(info.root, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1)
-        print("Speed=",round(info.Quickness,3))
-    elif kb==b'down':#Down
-        info.Key-=0.1
-        info.r12=r**np.float(info.Key)
-        info.pitch_label.grid_forget()
-        info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0)
-        if info.thread_play is not None:
-            info.renew_flag=True
-        print("Key=",round(info.Key,2))
     elif kb==b'down_much':#Down
         info.Key-=1.0
         info.r12=r**np.float(info.Key)
-        info.pitch_label.grid_forget()
-        info.pitch_label=tk.Label(info.root, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0)
+        info.pitch_entry.delete(0,tkinter.END)
+        info.pitch_entry.insert(tkinter.END,round(info.Key,2))
         if info.thread_play is not None:
             info.renew_flag=True
         print("Key=",round(info.Key,2))
-
+    elif kb==b'changekey':
+        if info.pitch_entry.get().replace(',', '').replace('.', '').replace('-', '').isnumeric():
+            try:
+                round(float(info.pitch_entry.get()),2)
+            except:
+                messagebox.showinfo('エラー', 'float型として適切ではありません')
+                return
+            if round(float(info.pitch_entry.get()),2)>=-12 and round(float(info.pitch_entry.get()),2)<=12:
+                info.Key = round(float(info.pitch_entry.get()),2)
+                info.r12=r**np.float(info.Key)
+                if info.thread_play is not None:
+                    info.renew_flag=True
+                print("Key=",round(info.Key,2))
+            else:
+                messagebox.showinfo('エラー', 'Keyは-12~12でお願いします')
+        else:
+            messagebox.showinfo('エラー', 'Keyはfloat型でお願いします')
+        info.pitch_entry.delete(0,tkinter.END)
+        info.pitch_entry.insert(tkinter.END,round(info.Key,2))
+    elif kb==b'changespeed':
+        if info.speed_entry.get().replace(',', '').replace('.', '').replace('-', '').isnumeric():
+            try:
+                round(float(info.speed_entry.get()),2)
+            except:
+                messagebox.showinfo('エラー', 'float型として適切ではありません')
+                return
+            if round(float(info.speed_entry.get()),2)>=0.01:
+                info.Quickness = round(float(info.speed_entry.get()),2)
+                if info.thread_play is not None:
+                    info.renew_flag=True
+                print("Speed=",round(info.Quickness,3))
+            else:
+                messagebox.showinfo('エラー', 'Speedは0.01以上でお願いします')
+        else:
+            messagebox.showinfo('エラー', 'Speedはfloat型でお願いします')
+        info.speed_entry.delete(0,tkinter.END)
+        info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
 def playback(filename):
-    info.song = AudioFile(filename,info.r12)
+    info.song = AudioFile(filename+".wav",info.r12)
     try:
         info.song.play()
     except KeyboardInterrupt:
@@ -420,53 +452,126 @@ def playback(filename):
         info.song.p.terminate()
         messagebox.showinfo('強制終了', '強制終了します')
         sys.exit()
+
+def volumeset(dummy,volume):
+    info.volume=volume
+    info.renew_flag=True
 class WinodwClass(tk.Frame):
-    PlayImage=None
+    PlayImage,RestartImage,exitImage=None,None,None
+    stop_and_startimage=None
+    sharpimage,flatimage=None,None
+    leftarrowimage,rightarrowimage=None,None
+    fastimage,slowimage=None,None
+    shuffle_Image,directory_repeat_Image,one_repeat_Image=None,None,None
+    back10secimage,forward10secimage,back5secimage,forward5secimage=None,None,None,None
     def __init__(self,master):
         super().__init__(master)
         master.title("音楽再生アプリ") #タイトル作成
-        master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
+        #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
-        tk.Button(master, text="pitch-1", fg = "red",command=partial(backgroundprocess,b'down_much',''),font=("",20)).grid(row=4, column=0, padx=10, pady=10)
-        tk.Button(master, text="pitch-0.1", fg = "red",command=partial(backgroundprocess,b'down',''),font=("",20)).grid(row=3, column=0, padx=10, pady=10)
-        tk.Button(master, text="pitch+0.1", fg = "red",
-        command=partial(backgroundprocess,b'up'),font=("",20)).grid(row=1, column=0, padx=10, pady=10)
-        tk.Button(master, text="pitch+1", fg = "red",command=partial(backgroundprocess,b'up_much',''),font=("",20)).grid(row=0, column=0, padx=10, pady=10)
-        info.pitch_label=tk.Label(master, text="Pitch="+str(round(info.Key,2)),font=("",20))
-        info.pitch_label.grid(row=5,column=0)
-        tk.Button(master, text="pitch_reset", fg = "red",command=partial(backgroundprocess,b'e',''),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
+        image = Image.open("img/フラット.png").resize((50, 50))
+        self.flatimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="pitch-1", fg = "red", image=self.flatimage,command=partial(backgroundprocess,b'down_much',''),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
+        image = Image.open("img/シャープ.png").resize((50, 50))
+        self.sharpimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="pitch+1", fg = "red", image=self.sharpimage,command=partial(backgroundprocess,b'up_much',''),font=("",20)).grid(row=0, column=2, padx=10, pady=10)
 
-        tk.Button(master, text="speed+10%", fg = "blue",command=partial(backgroundprocess,b'right',''),font=("",20)).grid(row=0, column=1, padx=10, pady=10)
-        tk.Button(master, text="speed+1%", fg = "blue",command=partial(backgroundprocess,b'right_little',''),font=("",20)).grid(row=1, column=1, padx=10, pady=10)
-        tk.Button(master, text="speed-1%", fg = "blue",command=partial(backgroundprocess,b'left_little',''),font=("",20)).grid(row=3, column=1, padx=10, pady=10)
-        tk.Button(master, text="speed-10%", fg = "blue",command=partial(backgroundprocess,b'left',''),font=("",20)).grid(row=4, column=1, padx=10, pady=10)
-        info.speed_label=tk.Label(master, text="Speed="+str(round(info.Quickness,3)),font=("",20))
-        info.speed_label.grid(row=5,column=1)
-        tk.Button(master, text="speed_reset", fg = "blue",command=partial(backgroundprocess,b'r',''),font=("",20)).grid(row=2, column=1, padx=10, pady=10)
+        entryframe = ttk.Frame(master, padding=10)
+        entryframe.grid(row=1, column=1,rowspan=3,columnspan=3)
+        pitchframe = ttk.Frame(entryframe, padding=5)
+        IDirLabel = ttk.Label(pitchframe, text="Pitch=")
+        IDirLabel.pack(side=LEFT)
+        info.pitch_entry = ttk.Entry(pitchframe,width=10)
+        info.pitch_entry.insert(tk.END, info.Key) # 最初から文字を入れておく
+        info.pitch_entry.pack(side=LEFT)
+        pitchRead=ttk.Button(pitchframe, width=10, text="変更",command=partial(backgroundprocess,b'changekey',''))
+        pitchRead.pack(side=LEFT)
+        tk.Button(pitchframe, text="reset", fg = "red",command=partial(backgroundprocess,b'e','')).pack(side=LEFT)
+        pitchframe.pack(side=TOP)
 
-        tk.Button(master, text="back_10sec", fg = "green",command=partial(backgroundprocess,b's',''),font=("",20)).grid(row=3, column=2, padx=10, pady=10)
-        tk.Button(master, text="back_3sec", fg = "green",command=partial(backgroundprocess,b'd',''),font=("",20)).grid(row=2, column=2, padx=10, pady=10)
-        tk.Button(master, text="forward_3sec", fg = "green",command=partial(backgroundprocess,b'f',''),font=("",20)).grid(row=1, column=2, padx=10, pady=10)
-        tk.Button(master, text="forward_10sec", fg = "green",command=partial(backgroundprocess,b'g',''),font=("",20)).grid(row=0, column=2, padx=10, pady=10)
+        ttk.Label(entryframe, text='--------------------------------------------').pack(side=TOP)
 
-        tk.Button(master, text="restart", fg = "deep pink",command=partial(backgroundprocess,b'p',''),font=("",20)).grid(row=5, column=2, padx=10, pady=10)
-        tk.Button(master, text="playlist終了", fg = "deep pink",command=partial(backgroundprocess,b'q',''),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
-        tk.Button(master, text="back", fg = "orange",command=partial(backgroundprocess,b'b',''),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
-        tk.Button(master, text="next", fg = "orange",command=partial(backgroundprocess,b'n',''),font=("",20)).grid(row=4, column=3, padx=10, pady=10)
+        image = Image.open("img/速度プラス10パー.png").resize((50, 50))
+        self.fastimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="speed+10%", fg = "blue", image=self.fastimage,command=partial(backgroundprocess,b'right',''),font=("",20)).grid(row=2, column=4, padx=10, pady=10)
+        image = Image.open("img/速度マイナス10パー.png").resize((50, 50))
+        self.slowimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="speed-10%", fg = "blue", image=self.slowimage,command=partial(backgroundprocess,b'left',''),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
 
-        tk.Button(master, text="再生", fg = "navy",command=start_playthread,font=("",20)).grid(row=6, column=1, padx=10, pady=10)
+        speedframe = ttk.Frame(entryframe, padding=5)
+        IDirLabel = ttk.Label(speedframe, text="Speed=")
+        IDirLabel.pack(side=LEFT)
+        info.speed_entry = ttk.Entry(speedframe,width=10)
+        info.speed_entry.insert(tk.END, info.Quickness) # 最初から文字を入れておく
+        info.speed_entry.pack(side=LEFT)
+        speedRead=ttk.Button(speedframe, width=10, text="変更",command=partial(backgroundprocess,b'changespeed',''))
+        speedRead.pack(side=LEFT)
+        tk.Button(speedframe, text="reset", fg = "blue",command=partial(backgroundprocess,b'r','')).pack(side=LEFT)
+        speedframe.pack(side=TOP)
+
+
+        image = Image.open("img/10秒巻き戻し.png").resize((50, 50))
+        self.back10secimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="back_10sec", fg = "green", image=self.back10secimage,command=partial(backgroundprocess,b's',''),font=("",20)).grid(row=5, column=1, padx=10, pady=10)
+        image = Image.open("img/5秒巻き戻し.png").resize((50, 50))
+        self.back5secimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="back_5sec", fg = "green", image=self.back5secimage,command=partial(backgroundprocess,b'd',''),font=("",20)).grid(row=5, column=2, padx=10, pady=10)
+        image = Image.open("img/5秒早送り.png").resize((50, 50))
+        self.forward5secimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="forward_5sec", fg = "green", image=self.forward5secimage,command=partial(backgroundprocess,b'f',''),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
+        image = Image.open("img/10秒早送り.png").resize((50, 50))
+        self.forward10secimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="forward_10sec", fg = "green", image=self.forward10secimage,command=partial(backgroundprocess,b'g',''),font=("",20)).grid(row=5, column=4, padx=10, pady=10)
+
+        image = Image.open("img/リスタート.png").resize((50, 50))
+        self.RestartImage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="restart", fg = "deep pink",image=self.RestartImage,command=partial(backgroundprocess,b'p',''),font=("",20)).grid(row=6, column=4, padx=10, pady=10)
+        image = Image.open("img/EXIT.png").resize((50, 50))
+        self.exitImage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="終了", fg = "deep pink",image=self.exitImage,command=partial(backgroundprocess,b'q','',windowroot=master),font=("",20)).grid(row=6, column=5, padx=10, pady=10)
+
+        image = Image.open("img/再生ボタン.png").resize((50, 50))
+        self.PlayImage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="再生", fg = "navy",image=self.PlayImage,command=start_playthread,font=("",20)).grid(row=6, column=2, padx=10, pady=10)
         info.playtimeframe = tk.LabelFrame(master, text="再生時間",font=("",20))
-        info.playtimeframe.grid(row=6, padx=10, pady=10)
+        info.playtimeframe.grid(row=6, column=0,columnspan=2,padx=10, pady=10)
         info.label=tk.Label(info.playtimeframe, text='--s/--s',font=("",20))
         info.label.pack()
         getplaytime(master)
-        tk.Button(master, text="プログラム終了", fg = "deep pink",command=lambda: master.destroy() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください'),font=("",20)).grid(row=6, column=3, padx=10, pady=10)
-        tk.Button(master, text="一時停止/再開", fg = "navy",command=partial(backgroundprocess,b'\r',''),font=("",20)).grid(row=6, column=2, padx=10, pady=10)
 
-        tk.Button(master, text="ノーマル再生", fg = "purple",command=partial(backgroundprocess,b'v',''),font=("",20)).grid(row=0, column=3, padx=10, pady=10)
-        tk.Button(master, text="シャッフル", fg = "purple",command=partial(backgroundprocess,b'z',''),font=("",20)).grid(row=1, column=3, padx=10, pady=10)
-        tk.Button(master, text="フォルダリピート", fg = "purple",command=partial(backgroundprocess,b'x',''),font=("",20)).grid(row=2, column=3, padx=10, pady=10)
-        tk.Button(master, text="1曲リピート", fg = "purple",command=partial(backgroundprocess,b'c',''),font=("",20)).grid(row=3, column=3, padx=10, pady=10)
+        image = Image.open("img/一時停止再開ボタン.png").resize((50, 50))
+        self.stop_and_startimage=ImageTk.PhotoImage(image)
+        tk.Button(master, text="一時停止/再開", fg = "navy", image=self.stop_and_startimage,command=partial(backgroundprocess,b'\r',''),font=("",20)).grid(row=6, column=3, padx=10, pady=10)
+
+        image = Image.open("img/左矢印.png").resize((50, 50))
+        self.leftarrowimage=ImageTk.PhotoImage(image)
+        backbutton=tk.Button(master, text="back", fg = "orange", image=self.leftarrowimage,command=partial(backgroundprocess,b'b',''),font=("",20))
+        image = Image.open("img/右矢印.png").resize((50, 50))
+        self.rightarrowimage=ImageTk.PhotoImage(image)
+        nextbutton=tk.Button(master, text="next", fg = "orange", image=self.rightarrowimage,command=partial(backgroundprocess,b'n',''),font=("",20))
+
+
+        image = Image.open("img/シャッフル再生.png").resize((50, 50))
+        self.shuffle_Image=ImageTk.PhotoImage(image)
+        shuffle_button=tk.Button(master, text="シャッフル", fg = "purple",image=self.shuffle_Image,font=("",20))
+        image = Image.open("img/フォルダリピート.png").resize((50, 50))
+        self.directory_repeat_Image=ImageTk.PhotoImage(image)
+        directory_repeat_button=tk.Button(master, text="フォルダリピート", fg = "purple", image=self.directory_repeat_Image,font=("",20))
+        image = Image.open("img/1曲リピート.png").resize((50, 50))
+        self.one_repeat_Image=ImageTk.PhotoImage(image)
+        one_repeat_button=tk.Button(master, text="1曲リピート", fg = "purple", image=self.one_repeat_Image,font=("",20))
+
+        backbutton['command']=partial(backgroundprocess,b'b','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        backbutton.grid(row=5, column=0, padx=10, pady=10)
+        nextbutton['command']=partial(backgroundprocess,b'n','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        nextbutton.grid(row=5, column=5, padx=10, pady=10)
+        shuffle_button['command']=partial(backgroundprocess,b'z','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        shuffle_button.grid(row=0, column=5, padx=10, pady=10)
+        directory_repeat_button['command']=partial(backgroundprocess,b'x','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        directory_repeat_button.grid(row=2, column=5, padx=10, pady=10)
+        one_repeat_button['command']=partial(backgroundprocess,b'c','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        one_repeat_button.grid(row=4, column=5, padx=10, pady=10)
+
         scaleframe = ttk.Frame(master,padding=10)
         first_label=tk.Label(scaleframe, text="first",font=("",20))
         first_label.pack(side=tk.LEFT)
@@ -483,21 +588,30 @@ class WinodwClass(tk.Frame):
         info.scalebar.pack(side=tk.LEFT)
         last_label=tk.Label(scaleframe, text="last",font=("",20))
         last_label.pack(side=tk.RIGHT)
-        scaleframe.grid(row=8,column=0,columnspan=4,sticky=(N, W, S, E))
+        scaleframe.grid(row=7,column=0,columnspan=6,sticky=(N, W, S, E))
+
+        volumescaleframe = ttk.Frame(master)
+        volume_label_0=tk.Label(volumescaleframe, text="Volume: 0")
+        volume_label_0.pack(side=tk.LEFT)
+        volumeval = IntVar(master=master,value=100)
+        volumescalebar = tk.Scale(
+            volumescaleframe,
+            variable=volumeval,
+            orient=HORIZONTAL,
+            length=100,
+            from_=0,
+            to=100,
+            command=partial(volumeset,volumeval.get()))
+        volumescalebar.pack(side=tk.LEFT)
+        volume_label_100=tk.Label(volumescaleframe, text="100")
+        volume_label_100.pack(side=tk.RIGHT)
+        volumescaleframe.grid(row=0,column=3,columnspan=2,sticky=(E))
 
 def pos_renew(root,scaleframe):
     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
-        info.scalebar.pack_forget()
         val = DoubleVar(master=root,value=int((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))
-        info.scalebar = ttk.Scale(
-            scaleframe,
-            variable=val,
-            orient=HORIZONTAL,
-            length=700,
-            from_=0,
-            to=info.duration,
-            command=partial(backgroundprocess,val.get()))
-        info.scalebar.pack(side=tk.LEFT)
+        info.scalebar['variable']=val
+        info.scalebar['to']=info.duration
     root.after(100,pos_renew,root,scaleframe)
 
 def window():
@@ -508,9 +622,7 @@ def window():
 
 def getplaytime(root):
     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
-        info.label.pack_forget()
-        info.label=tk.Label(info.playtimeframe, text=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s",font=("",20))
-        info.label.pack()
+        info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s"
     root.after(100,getplaytime,root)
 
 class WindowThread(threading.Thread):
@@ -612,8 +724,6 @@ class PlayThread(threading.Thread):
             PlayListTkintertk = Tk()
             PlayListTkinter=PlayListTkinterClass(master=PlayListTkintertk)
             PlayListTkinter.mainloop()
-            #thread_PlayListTkinter=PlayListTkinterThread()
-            #thread_PlayListTkinter.start()
             if info.mode==0:
                 if info.targetname_0.get()=='./':
                     os.chdir(info.basedirname)
@@ -629,7 +739,6 @@ class PlayThread(threading.Thread):
             elif info.mode==2:
                 if info.targetname_2.get != '':
                     playfile=info.targetname_2.get()
-                    print("playfile=",playfile)
                     info.root.title("音楽再生アプリ("+info.targetname_2.get()+")")
             else:
                 print("×が押されました")
@@ -751,13 +860,11 @@ class PlayThread(threading.Thread):
             print("")
             print("playlistを作成します")
             os.chdir(playlistdirname)
-            if len(playlist)!=0:
-                 playlistframe.grid_forget()
             playlist=[]
             for f in glob.glob("./*"):
                 if os.path.splitext(f)[1]=='.wav':
                     print(os.path.split(f)[1])
-                    playlist.append(os.path.split(f)[1])
+                    playlist.append(os.path.basename(f).split('.', 1)[0])
             print("playlist作成完了！")
             print("")
             print("playlist=",playlist)
@@ -775,21 +882,21 @@ class PlayThread(threading.Thread):
             playlistframe = tk.Frame(canvas)
             # Scrollbar を生成して配置
             bar_ver = tk.Scrollbar(info.root, orient=tk.VERTICAL)
-            bar_ver.grid(row=1, column=5,rowspan=5, pady=10,sticky="NS")
+            bar_ver.grid(row=1, column=7,rowspan=5, pady=10,sticky="NS")
             #bar_ver = tk.Scrollbar(playlistframe, orient=tk.VERTICAL)
             #bar_ver.pack(side='right',fill=tk.BOTH)
 
             # Canvas Widget を配置
             canvas.config(yscrollcommand=bar_ver.set)
             canvas.config(scrollregion=(0,0,400,27*info.playlist_len)) #スクロール範囲
-            canvas.grid(row=1, column=4, rowspan=5,padx=10, pady=10,sticky="WNES")
+            canvas.grid(row=1, column=6, rowspan=5,padx=10, pady=10,sticky="WNES")
 
             bar_ver.config(command=canvas.yview)
             # Frame Widgetを Canvas Widget上に配置
             canvas.create_window((0,0), window=playlistframe, anchor=tk.NW, width=canvas.cget('width'))
 
             for i, target in enumerate(playlist):
-                plbtn=tk.Button(playlistframe, text=str(i+1)+":"+target, command=partial(backgroundprocess,i+1,''))
+                plbtn=tk.Button(playlistframe, text=str(i+1)+": "+target, command=partial(backgroundprocess,i+1,''))
                 playlist_label.append(plbtn)
                 plbtn.pack(fill=tk.X)
             while True:
@@ -818,9 +925,9 @@ class PlayThread(threading.Thread):
                     break
         print("Playlistが終了しました")
         info.thread_play=None
-        info.label.pack_forget()
-        info.label=tk.Label(info.playtimeframe, text='--s/--s',font=("",20))
-        info.label.pack()
+        canvas.grid_forget()
+        bar_ver.grid_forget()
+        info.label['text']='--s/--s'
 
 def start_windowthread():
     thread_window=WindowThread()
