@@ -2,36 +2,51 @@ from MusicPlayApp_Interface_WithLibrosa import *
 import librosa
 info=AudioInformation()
 
-def dirdialog_clicked():#フォルダ参照
+def dirdialog_clicked(PlayListTkinter):#フォルダ参照
+    PlayListTkinter.attributes("-topmost", False)
     iDir = os.path.abspath(os.path.dirname("__file__")+"../")
     iDirPath = filedialog.askdirectory(initialdir = iDir)
-    info.targetname_0.delete(0,tkinter.END)
-    info.targetname_2.delete(0,tkinter.END)
-    info.targetname_1.delete(0,tkinter.END)
-    info.targetname_1.insert(tkinter.END,iDirPath)
+    if iDirPath !='':
+        info.targetname_0.delete(0,tkinter.END)
+        info.targetname_2.delete(0,tkinter.END)
+        info.targetname_1.delete(0,tkinter.END)
+        info.targetname_1.insert(tkinter.END,iDirPath)
+    PlayListTkinter.attributes("-topmost", True)
 def dir_play(PlayListTkinter):#フォルダ再生
     if os.path.isdir(info.targetname_1.get()):
         info.mode=1
+        info.targetname_0_str=None
+        info.targetname_1_str=info.targetname_1.get()
+        info.targetname_2_str=None
         PlayListTkinter.quit()
     else:
         messagebox.showinfo('エラー', '指定されたパスが存在しません')
-def filedialog_clicked():#ファイル参照
+def filedialog_clicked(PlayListTkinter):#ファイル参照
+    PlayListTkinter.attributes("-topmost", False)
     fTyp = [("", "*")]
     iFile = os.path.abspath(os.path.dirname("__file__")+"../")
     iFilePath = filedialog.askopenfilename(filetype = fTyp, initialdir = iFile)
-    info.targetname_0.delete(0,tkinter.END)
-    info.targetname_1.delete(0,tkinter.END)
-    info.targetname_2.delete(0,tkinter.END)
-    info.targetname_2.insert(tkinter.END,iFilePath)
+    if iFilePath != '':
+        info.targetname_0.delete(0,tkinter.END)
+        info.targetname_1.delete(0,tkinter.END)
+        info.targetname_2.delete(0,tkinter.END)
+        info.targetname_2.insert(tkinter.END,iFilePath)
+    PlayListTkinter.attributes("-topmost", True)
 def file_play(PlayListTkinter):#ファイル再生
     if os.path.isfile(info.targetname_2.get()):
         info.mode=2
+        info.targetname_0_str=None
+        info.targetname_1_str=None
+        info.targetname_2_str=info.targetname_2.get()
         PlayListTkinter.quit()
     else:
         messagebox.showinfo('エラー', '指定されたパスが存在しません')
 def getTextInput(PlayListTkinter):#パス指定再生
     if info.targetname_0.get()=='./' or os.path.isdir(info.targetname_0.get()):
         info.mode=0
+        info.targetname_0_str=info.targetname_0.get()
+        info.targetname_1_str=None
+        info.targetname_2_str=None
         PlayListTkinter.quit()
     elif os.path.isfile(info.targetname_0.get()):
         info.mode=2
@@ -76,6 +91,8 @@ class AudioFile:
         chunk_mul=128
         chunk = 1024*chunk_mul
         buffer=1024*32
+        #chunk = 44100*3
+        #buffer=44100
         def __init__(self, file, speed):
            """ Init audio stream """
            self.wf = wave.open(file, 'rb')
@@ -613,6 +630,13 @@ def pos_renew(root,scaleframe):
         info.scalebar['variable']=val
         info.scalebar['to']=info.duration
     root.after(100,pos_renew,root,scaleframe)
+class WindowThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+    def run(self):
+        window()
+        print("終了")
+        sys.exit()
 
 def window():
     info.root = Tk()
@@ -625,18 +649,56 @@ def getplaytime(root):
         info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s"
     root.after(100,getplaytime,root)
 
-class WindowThread(threading.Thread):
+class PlayListTkinterThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
     def run(self):
-        window()
-        print("終了")
-        sys.exit()
+        PlayListTkintertk = Tk()
+        PlayListTkinter=PlayListTkinterClass(master=PlayListTkintertk)
+        PlayListTkinter.mainloop()
+class ScrollFrame(ClassFrame):
+    def __init__(self, master, playlist, bg=None, width=None, height=None):
+        super(ScrollFrame, self).__init__(master, bg=bg, width=width, height=height)
+
+        # スクロールバーの作成
+        self.scroll_bar = tk.Scrollbar(self, orient=tk.VERTICAL)
+        self.scroll_bar.pack(fill=tk.Y, side=tk.RIGHT, expand=False)
+        self.canvas = tk.Canvas(self, yscrollcommand=self.scroll_bar.set)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scroll_bar.config(command=self.canvas.yview)
+
+        # ビューをリセット
+        self.canvas.xview_moveto(0)
+        self.canvas.yview_moveto(0)
+
+        self.interior = tk.Frame(self.canvas, bg="gray90", borderwidth=10)
+        self.interior_id = self.canvas.create_window(0, 0, window=self.interior, anchor=tk.NW)
+
+        self.interior.bind('<Configure>', self.configure_interior)
+        self.canvas.bind('<Configure>', self.configure_canvas)
+
+        self.buttons = []
+        for i, target in enumerate(playlist):
+            self.buttons.append(tk.Button(self.interior, text=str(i+1)+": "+target, command=partial(backgroundprocess,i+1,'')))
+            self.buttons[i].pack(anchor=tk.NW, fill=tk.X, pady=(0, 10))
+
+    def configure_interior(self, event=None):
+        size = (self.interior.winfo_reqwidth(), self.interior.winfo_reqheight())
+        self.canvas.config(scrollregion="0 0 %s %s" % size)
+        if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
+            self.canvas.config(width=self.interior.winfo_reqwidth())
+
+    def configure_canvas(self, event=None):
+        if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
+            self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
+
+
 class PlayListTkinterClass(tk.Frame):
     def __init__(self,master):
         super().__init__(master)
         master.title("Playlistの選択")
         master.protocol('WM_DELETE_WINDOW', (lambda:master.quit()))
+        master.attributes("-topmost", True)
 
         frame0 = ttk.Frame(master, padding=10)
         frame0.grid(row=0, column=1, sticky=E)
@@ -667,7 +729,7 @@ class PlayListTkinterClass(tk.Frame):
         info.targetname_1.pack(side=LEFT)
 
         # 「フォルダ参照」ボタンの作成
-        IDirButton = ttk.Button(frame1, text="参照", command=dirdialog_clicked)
+        IDirButton = ttk.Button(frame1, text="参照", command=partial(dirdialog_clicked,master))
         IDirButton.pack(side=LEFT)
         btnRead1=ttk.Button(frame1, width=10, text="再生",
                             command=lambda:dir_play(master))
@@ -688,7 +750,7 @@ class PlayListTkinterClass(tk.Frame):
         info.targetname_2.pack(side=LEFT)
 
         # 「ファイル参照」ボタンの作成
-        IFileButton = ttk.Button(frame2, text="参照", command=filedialog_clicked)
+        IFileButton = ttk.Button(frame2, text="参照", command=partial(filedialog_clicked,master))
         IFileButton.pack(side=LEFT)
         btnRead2=ttk.Button(frame2, width=10, text="再生",
                             command=lambda:file_play(master))
@@ -698,13 +760,30 @@ class PlayListTkinterClass(tk.Frame):
         frame3 = ttk.Frame(master, padding=10)
         frame3.grid(row=7,column=1,sticky=W)
 
-class PlayListTkinterThread(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-    def run(self):
-        PlayListTkintertk = Tk()
-        PlayListTkinter=PlayListTkinterClass(master=PlayListTkintertk)
-        PlayListTkinter.mainloop()
+class PlaylistCanvas:
+    def __init__(self, playlist):
+        self.canvas = tk.Canvas(info.root)
+        self.playlistframe =  ScrollFrame(master=self.canvas, playlist=playlist)
+        self.canvas.grid(row=1, column=6, rowspan=5,padx=10, pady=10,sticky="WNES")
+        self.canvas.create_window((0,0), window=self.playlistframe, anchor=tk.NW, width=self.canvas.cget('width'))
+        self.playlistframe.interior.bind("<MouseWheel>",self.mouse_y_scroll)
+        if len(playlist)>=8:
+            for i in range(len(playlist)):
+                self.playlistframe.buttons[i].bind("<MouseWheel>", self.mouse_y_scroll)
+    def getCanvas(self):
+        return self.canvas
+    def move_start(self, event):
+        self.playlistframe.canvas.scan_mark(event.x, event.y)
+
+    def move_move(self, event):
+        self.playlistframe.canvas.scan_dragto(event.x, event.y, gain=1)
+
+    def mouse_y_scroll(self, event):
+        if event.delta > 0:
+            self.playlistframe.canvas.yview_scroll(-1, 'units')
+        elif event.delta < 0:
+            self.playlistframe.canvas.yview_scroll(1, 'units')
+
 class PlayThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -721,30 +800,26 @@ class PlayThread(threading.Thread):
         print("")
         try:
             print("Playlistの選択")
-            PlayListTkintertk = Tk()
-            PlayListTkinter=PlayListTkinterClass(master=PlayListTkintertk)
-            PlayListTkinter.mainloop()
+            thread_playlisttkinter=PlayListTkinterThread()
+            thread_playlisttkinter.start()
+            thread_playlisttkinter.join()
             if info.mode==0:
-                if info.targetname_0.get()=='./':
-                    os.chdir(info.basedirname)
-                    info.root.title("音楽再生アプリ("+info.basedirname+")")
-                else:
-                    if info.targetname_0.get != '':
-                        os.chdir(info.targetname_0.get())
-                        info.root.title("音楽再生アプリ("+info.targetname_0.get()+")")
+                if info.targetname_0_str != '':
+                    os.chdir(info.targetname_0_str)
+                    info.root.title("音楽再生アプリ("+info.targetname_0_str+")")
             elif info.mode==1:
-                if info.targetname_1.get != '' :
-                    os.chdir(info.targetname_1.get())
-                    info.root.title("音楽再生アプリ("+info.targetname_1.get()+")")
+                if info.targetname_1_str != '' :
+                    os.chdir(info.targetname_1_str)
+                    info.root.title("音楽再生アプリ("+info.targetname_1_str+")")
             elif info.mode==2:
-                if info.targetname_2.get != '':
-                    playfile=info.targetname_2.get()
-                    info.root.title("音楽再生アプリ("+info.targetname_2.get()+")")
+                if info.targetname_2_str != '':
+                    playfile=info.targetname_2_str
+                    info.root.title("音楽再生アプリ("+info.targetname_2_str+")")
             else:
                 print("×が押されました")
                 info.thread_play=None
                 return
-        except:
+        except e:
             messagebox.showinfo('エラー', '予期せぬエラーが発生しました(これを見たときは至急私まで)')
         else:
             if info.mode==2:
@@ -876,29 +951,9 @@ class PlayThread(threading.Thread):
                 os.rmdir(playlistdirname)
                 info.thread_play=None
                 return
-            # Canvas Widget を生成
-            canvas = tk.Canvas(info.root)
-            # Frame Widgetを 生成
-            playlistframe = tk.Frame(canvas)
-            # Scrollbar を生成して配置
-            bar_ver = tk.Scrollbar(info.root, orient=tk.VERTICAL)
-            bar_ver.grid(row=1, column=7,rowspan=5, pady=10,sticky="NS")
-            #bar_ver = tk.Scrollbar(playlistframe, orient=tk.VERTICAL)
-            #bar_ver.pack(side='right',fill=tk.BOTH)
-
-            # Canvas Widget を配置
-            canvas.config(yscrollcommand=bar_ver.set)
-            canvas.config(scrollregion=(0,0,400,27*info.playlist_len)) #スクロール範囲
-            canvas.grid(row=1, column=6, rowspan=5,padx=10, pady=10,sticky="WNES")
-
-            bar_ver.config(command=canvas.yview)
-            # Frame Widgetを Canvas Widget上に配置
-            canvas.create_window((0,0), window=playlistframe, anchor=tk.NW, width=canvas.cget('width'))
-
-            for i, target in enumerate(playlist):
-                plbtn=tk.Button(playlistframe, text=str(i+1)+": "+target, command=partial(backgroundprocess,i+1,''))
-                playlist_label.append(plbtn)
-                plbtn.pack(fill=tk.X)
+            #canvas処理
+            canvas=PlaylistCanvas(playlist=playlist)
+            canvas=canvas.getCanvas()
             while True:
                 print(index+1,"番目の",playlist[index],"を再生")
                 playback(playlist[index])
@@ -926,7 +981,7 @@ class PlayThread(threading.Thread):
         print("Playlistが終了しました")
         info.thread_play=None
         canvas.grid_forget()
-        bar_ver.grid_forget()
+        #bar_ver.grid_forget()
         info.label['text']='--s/--s'
 
 def start_windowthread():
@@ -994,13 +1049,12 @@ if __name__ == "__main__":
     for index in range(0,p.get_device_count()):
         if p.get_device_info_by_index(index)['hostApi']==0 and p.get_device_info_by_index(index)['maxOutputChannels']==2:
             outputdevicelist.append(p.get_device_info_by_index(index))
-    print("出力デバイスを入力")
+    print("出力デバイスを選択")
     if len(outputdevicelist)==0:
         print("出力デバイスがありません。プレイヤーを開始できません")
     elif len(outputdevicelist)==1:
         info.outputdeviceindex=outputdevicelist[0]['index']
     elif len(outputdevicelist)>=2:
-        print("出力デバイスの選択")
         outputdeviceInputtk=Tk()
         outputdeviceInput=outputdeviceInputClass(master=outputdeviceInputtk,outputdevicelist=outputdevicelist)
         outputdeviceInput.mainloop()

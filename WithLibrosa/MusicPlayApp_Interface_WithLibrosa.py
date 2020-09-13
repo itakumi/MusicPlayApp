@@ -41,16 +41,25 @@ class AudioInformation:
     targetname_0=None #パス指定のentry
     targetname_1=None #フォルダ指定のentry
     targetname_2=None #ファイル指定のentry
+    targetname_0_str=None #パス指定のentry
+    targetname_1_str=None #フォルダ指定のentry
+    targetname_2_str=None #ファイル指定のentry
     scalebar=None #曲の位置を示すスケールバー
     stop_flag=False
     pitch_entry,speed_entry=None,None
     volume=100
+
+
+class ClassFrame(tk.Frame):
+    def __init__(self, master, bg=None, width=None, height=None):
+        super().__init__(master, bg=bg, width=width, height=height)
 
 def NormalPlay_Set(KeyInput,SpeedInput):#標準再生
     KeyInput.delete(0,tkinter.END)
     SpeedInput.delete(0,tkinter.END)
     KeyInput.insert(tkinter.END,"0")
     SpeedInput.insert(tkinter.END,"1")
+
 
 def help():
     print("操作説明")
