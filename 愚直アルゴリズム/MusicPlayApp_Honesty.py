@@ -155,7 +155,10 @@ class AudioFile:
                         data_pre=data_pre*round(float(info.volume),2)/100
                         data_pre=data_pre.astype(np.int16)
                         data_pre=data_pre.tobytes()
-                        self.stream.write(data_pre)
+                        if info.stop_flag:
+                            self.stream.stop_stream()
+                        if self.stream.is_active():
+                            self.stream.write(data_pre)
                     else:
                         if info.stop_flag ==False:
                             self.stream.start_stream()
@@ -220,11 +223,9 @@ def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_butt
             messagebox.showinfo('エラー', '音楽を開始してください')
         else:
             if info.song.stream.is_active():
-                messagebox.showinfo('一時停止', '一時停止します')
                 info.stop_flag=True
                 info.song.stream.stop_stream()
             else:
-                messagebox.showinfo('再開', '再開します')
                 info.stop_flag=False
                 info.song.stream.start_stream()
             info.renew_flag=True

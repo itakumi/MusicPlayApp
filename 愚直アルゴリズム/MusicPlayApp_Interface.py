@@ -50,6 +50,7 @@ class AudioInformation:
     stop_flag=False
     pitch_entry,speed_entry=None,None
     volume=100
+    algorithm=-1 #0:愚直アルゴリズム、1:Librosa
 
 
 class ClassFrame(tk.Frame):
