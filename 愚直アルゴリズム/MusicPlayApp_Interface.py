@@ -15,12 +15,14 @@ import glob
 import pydub
 import random
 import shutil
-import samplerate
-from scipy.fft import fft, ifft
-from tkinter import filedialog
 import scipy.signal
+import samplerate
+from tkinter import messagebox
+from tkinter import filedialog
+from PIL import Image, ImageTk
 
 class AudioInformation:
+    outputdeviceindex=-1
     Key=0 #音程
     r12=1 #周波数に掛けると音程が変わる
     Quickness=1 #速度
@@ -37,11 +39,22 @@ class AudioInformation:
     back_flag,shuffle_flag,directory_repeat_flag,one_repeat_flag=False,False,False,False #再生方法の変更
     next_play_index=0 #GUIから選択したときにインデックスを取得
     onesecframes=None #1秒当たりのフレーム数
-    pitch_label,speed_label=None,None #音程と速度のラベル
     label,playtimeframe=None,None #再生時間のラベル
     targetname_0=None #パス指定のentry
     targetname_1=None #フォルダ指定のentry
     targetname_2=None #ファイル指定のentry
+    targetname_0_str=None #パス指定のentry
+    targetname_1_str=None #フォルダ指定のentry
+    targetname_2_str=None #ファイル指定のentry
+    scalebar=None #曲の位置を示すスケールバー
+    stop_flag=False
+    pitch_entry,speed_entry=None,None
+    volume=100
+
+
+class ClassFrame(tk.Frame):
+    def __init__(self, master, bg=None, width=None, height=None):
+        super().__init__(master, bg=bg, width=width, height=height)
 
 def NormalPlay_Set(KeyInput,SpeedInput):#標準再生
     KeyInput.delete(0,tkinter.END)
@@ -94,12 +107,15 @@ def gen_xfade_honesty(x_pre, x_next, fadetime, sr):#愚直アルゴリズム
         sin_wave = np.sin(r)/10+1
         xfade= np.r_[x_pre,np.zeros(x_next_len)] + np.r_[np.zeros(x_pre_len),x_next]
         xfade[int((len(xfade)-ft_len)/2):int((len(xfade)+ft_len)/2)]*=sin_wave
-        xfade=np.fft.fft(xfade)
-        xfade_abs=np.abs(xfade)
-        xfade_amp=xfade_abs/len(xfade)*2
-        xfade=np.where(xfade_amp>2000,0,xfade)
-        xfade=np.fft.ifft(xfade)
-        xfade=xfade.real
+        #xfade=np.fft.fft(xfade)
+        #xfade_abs=np.abs(xfade)
+        #xfade_amp=xfade_abs/len(xfade)*2
+        #xfade_amp[0]=xfade_amp[0]/2
+        #xfade=np.where(xfade_amp>8000,0,xfade)
+        #xfade[10:]=0
+        #xfade=np.fft.ifft(xfade)
+        #xfade=xfade.real
+        xfade*=0.78
         xfade=xfade.astype(np.int16)
         x_pre=xfade[:prelen]
         x_next=xfade[prelen:]
