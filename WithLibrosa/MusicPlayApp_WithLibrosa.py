@@ -1,6 +1,5 @@
 from MusicPlayApp_Interface_WithLibrosa import *
 import librosa
-
 info=AudioInformation()
 
 def dirdialog_clicked(PlayListTkinter):#フォルダ参照
