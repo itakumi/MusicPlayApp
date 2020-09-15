@@ -100,6 +100,7 @@ class PSThread(threading.Thread):
             #self.data = librosa.effects.time_stretch(self.data,info.r12/info.Quickness)#/info.r12)
             if info.Quickness!=1:
                 self.data = librosa.effects.time_stretch(self.data,info.Quickness)
+            self.data*=0.9
             self.data*=round(float(info.volume),2)/100
             self.data = self.data.astype(np.int16)
             self.data = np.ndarray.tobytes(self.data)
@@ -173,7 +174,7 @@ class AudioFile:
                         if info.algorithm==0:
                             if data == '':
                                 data_pre = self.wf.readframes(int(self.chunk))
-                                time.sleep(1.3)
+                                time.sleep(0.1)
                             elif data != '':
                                 data_pre=data
                                 data=''
@@ -230,6 +231,8 @@ class AudioFile:
                                 for i in range(int(len(data_pre)/(size*4))+1):
                                     if info.quit:
                                         break
+                                    if msvcrt.kbhit():
+                                        backgroundprocess(msvcrt.getch(),'')
                                     if info.renew_flag:
                                         self.renew()
                                         info.renew_flag=False
@@ -239,13 +242,10 @@ class AudioFile:
                                         if info.stop_flag:
                                             self.stream.stop_stream()
                                             while self.stream.is_active()==False:
-                                                print("大気中")
                                                 time.sleep(0.1)
                                             self.stream.start_stream()
                                         if info.stop_flag==False:
                                             break
-                                    if msvcrt.kbhit():
-                                        backgroundprocess(msvcrt.getch(),'')
                                     if i<int(len(data_pre)/(size*4)):
                                         if self.stream.is_active():
                                             #print((size*4)*i,"~",(size*4)*(i+1))
@@ -268,6 +268,8 @@ class AudioFile:
                                 while True:
                                     if info.quit:
                                         break
+                                    if msvcrt.kbhit():
+                                        backgroundprocess(msvcrt.getch(),'')
                                     if info.renew_flag:
                                         self.renew()
                                         info.renew_flag=False
@@ -277,8 +279,6 @@ class AudioFile:
                                             thread_PS.join()
                                             self.stream.stop_stream()
                                         break
-                                    if msvcrt.kbhit():
-                                        backgroundprocess(msvcrt.getch(),'')
                                     if (size*4)*(lastdataindex+1)<info.last:
                                         dummy=self.wf.readframes(size)
                                         if info.stop_flag:
@@ -351,6 +351,8 @@ def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_butt
                 info.Quickness=round(info.Quickness,3)
                 info.speed_entry.delete(0,tkinter.END)
                 info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
+                if info.thread_play is not None:
+                    info.renew_flag=True
                 print("Speed=",round(info.Quickness,3))
         elif kb==b'H':#Up
             info.Key+=0.1
@@ -365,6 +367,8 @@ def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_butt
             info.Quickness=round(info.Quickness,3)
             info.speed_entry.delete(0,tkinter.END)
             info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
+            if info.thread_play is not None:
+                info.renew_flag=True
             print("Speed=",round(info.Quickness,3))
         elif kb==b'P':#Down
             info.Key-=0.1
@@ -468,20 +472,6 @@ def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_butt
         if info.thread_play is not None:
             info.renew_flag=True
         print("Speed=",round(info.Quickness,3))
-    elif kb.decode()=='0':
-        info.algorithm=0
-        info.song.chunk=1024*2
-        info.song.buffer=1024*2
-        if info.thread_play is not None:
-            #info.song.renew(customrate=info.r12)
-            info.renew_flag=True
-    elif kb.decode()=='1':
-        info.algorithm=1
-        info.song.chunk=1024*128
-        info.song.buffer=1024*2
-        if info.thread_play is not None:
-            #info.song.renew(customrate=1)
-            info.renew_flag=True
     elif kb.decode()=='q':
         if info.song is not None and info.thread_play is not None:
             info.next_play_index=info.playlist_len+1
