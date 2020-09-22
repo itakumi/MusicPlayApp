@@ -49,6 +49,7 @@ class AudioInformation:
     pitch_entry,speed_entry=None,None
     volume=100
     algorithm=1 #0:愚直アルゴリズム、1:Librosa
+    datalist=b''
 
 
 class ClassFrame(tk.Frame):
@@ -103,9 +104,9 @@ def gen_xfade_honesty(x_pre, x_next, fadetime, sr):#愚直アルゴリズム
         x_next=x_next.astype(np.float64)
         x_pre[-ft_len:]*=w_fo
         x_next[:ft_len]*=w_fi
-        sin_wave = np.sin(r)/10+1
+        #sin_wave = np.sin(r)/10+1
         xfade= np.r_[x_pre,np.zeros(x_next_len)] + np.r_[np.zeros(x_pre_len),x_next]
-        xfade[int((len(xfade)-ft_len)/2):int((len(xfade)+ft_len)/2)]*=sin_wave
+        #xfade[int((len(xfade)-ft_len)/2):int((len(xfade)+ft_len)/2)]*=sin_wave
         #xfade=np.fft.fft(xfade)
         #xfade_abs=np.abs(xfade)
         #xfade_amp=xfade_abs/len(xfade)*2

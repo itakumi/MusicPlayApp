@@ -1,17 +1,18 @@
 from MusicPlayApp_IF import *
 import librosa
+from ProcessMusic.RemoveVocal import *
 info=AudioInformation()
 
 def dirdialog_clicked(PlayListTkinter):#フォルダ参照
     PlayListTkinter.attributes("-topmost", False)
     iDir = os.path.abspath(os.path.dirname("__file__")+"../")
     iDirPath = filedialog.askdirectory(initialdir = iDir)
+    PlayListTkinter.attributes("-topmost", True)
     if iDirPath !='':
         info.targetname_0.delete(0,tkinter.END)
         info.targetname_2.delete(0,tkinter.END)
         info.targetname_1.delete(0,tkinter.END)
         info.targetname_1.insert(tkinter.END,iDirPath)
-    PlayListTkinter.attributes("-topmost", True)
 def dir_play(PlayListTkinter):#フォルダ再生
     if os.path.isdir(info.targetname_1.get()):
         info.mode=1
@@ -26,12 +27,12 @@ def filedialog_clicked(PlayListTkinter):#ファイル参照
     fTyp = [("", "*")]
     iFile = os.path.abspath(os.path.dirname("__file__")+"../")
     iFilePath = filedialog.askopenfilename(filetype = fTyp, initialdir = iFile)
+    PlayListTkinter.attributes("-topmost", True)
     if iFilePath != '':
         info.targetname_0.delete(0,tkinter.END)
         info.targetname_1.delete(0,tkinter.END)
         info.targetname_2.delete(0,tkinter.END)
         info.targetname_2.insert(tkinter.END,iFilePath)
-    PlayListTkinter.attributes("-topmost", True)
 def file_play(PlayListTkinter):#ファイル再生
     if os.path.isfile(info.targetname_2.get()):
         info.mode=2
@@ -95,11 +96,9 @@ class PSThread(threading.Thread):
         if len(self.data)!=0:
             self.data = np.frombuffer(self.data,dtype="int16")
             self.data=self.data.astype(np.float64)
-            if info.Key!=0:
-                self.data = librosa.effects.pitch_shift(self.data,info.song.wf.getframerate(),info.Key)
-            #self.data = librosa.effects.time_stretch(self.data,info.r12/info.Quickness)#/info.r12)
-            if info.Quickness!=1:
-                self.data = librosa.effects.time_stretch(self.data,info.Quickness)
+            self.data = librosa.effects.pitch_shift(self.data,info.song.wf.getframerate(),info.Key)
+
+            self.data = librosa.effects.time_stretch(self.data,info.Quickness)
             self.data*=0.9
             self.data*=round(float(info.volume),2)/100
             self.data = self.data.astype(np.int16)
@@ -116,14 +115,21 @@ class AudioFile:
             chunk_mul=128
             chunk = 1024*chunk_mul
             buffer=1024*2
-        #chunk = 44100*3
-        #buffer=44100
         def __init__(self, file, speed):
-           """ Init audio stream """
-           self.wf = wave.open(file, 'rb')
-           self.speed = speed
-           self.p = pyaudio.PyAudio()
-           if info.algorithm==0:
+            """ Init audio stream """
+            self.wf = wave.open(file, 'rb')
+            self.speed = speed
+            self.p = pyaudio.PyAudio()
+            if info.mode==0:
+                if info.targetname_0_str != '':
+                    info.root.title("音楽再生アプリ("+info.targetname_0_str+")   「"+os.path.basename(file).split('.', 1)[0]+"」再生中...")
+            elif info.mode==1:
+                if info.targetname_1_str != '' :
+                    info.root.title("音楽再生アプリ("+info.targetname_1_str+")   「"+os.path.basename(file).split('.', 1)[0]+"」再生中...")
+            elif info.mode==2:
+                if info.targetname_2_str != '':
+                    info.root.title("音楽再生アプリ("+info.targetname_2_str+")   「"+os.path.basename(file).split('.', 1)[0]+"」再生中...")
+            if info.algorithm==0:
                self.stream = self.p.open(
                    format = self.p.get_format_from_width(self.wf.getsampwidth()),
                    channels = self.wf.getnchannels(),
@@ -132,7 +138,7 @@ class AudioFile:
                    output_device_index=info.outputdeviceindex,
                    input=False,
                    output = True)
-           elif info.algorithm==1:
+            elif info.algorithm==1:
                self.stream = self.p.open(
                    format = self.p.get_format_from_width(self.wf.getsampwidth()),
                    channels = self.wf.getnchannels(),
@@ -162,7 +168,7 @@ class AudioFile:
             elif info.algorithm==1:
                 chunk_mul=128
                 self.chunk = 1024*chunk_mul
-                self.buffer=1024*2
+                self.buffer=1024*4
             while len(data_pre)!=0 and info.quit==False:
                 if info.renew_flag:
                     self.renew()
@@ -236,7 +242,6 @@ class AudioFile:
                                     if info.renew_flag:
                                         self.renew()
                                         info.renew_flag=False
-                                        #self.wf.setpos(currentpos)
                                         self.wf.setpos(self.wf.tell())
                                         data=''#多分ここが飛んでる原因
                                         if info.stop_flag:
@@ -248,7 +253,6 @@ class AudioFile:
                                             break
                                     if i<int(len(data_pre)/(size*4)):
                                         if self.stream.is_active():
-                                            #print((size*4)*i,"~",(size*4)*(i+1))
                                             if info.stop_flag:
                                                 thread_PS.join()
                                                 self.stream.stop_stream()
@@ -383,11 +387,9 @@ def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_butt
             messagebox.showinfo('エラー', '音楽を開始してください')
         else:
             if info.song.stream.is_active():
-                #messagebox.showinfo('一時停止', '一時停止します')
                 info.stop_flag=True
                 info.song.stream.stop_stream()
             else:
-                #messagebox.showinfo('再開', '再開します')
                 info.stop_flag=False
                 info.song.stream.start_stream()
             info.renew_flag=True
@@ -631,7 +633,6 @@ def setalgorithm(algorithm_num):
             info.algorithm=0
         elif algorithm_num==1:
             info.algorithm=1
-        #messagebox.showinfo('エラー', 'PlayListを開始してください')
         return
     if algorithm_num==0:
         info.algorithm=0
@@ -661,25 +662,17 @@ class WinodwClass(tk.Frame):
         #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
         algorithmframe = ttk.Frame(master, padding=(10))
-        #v1 = StringVar()
-        #v1.set('愚直アルゴリズム') # 初期化
         algorithmvar = IntVar(master=master,value=1)
         rb1 = ttk.Radiobutton(
             algorithmframe, text='librosa',
             variable=algorithmvar,
             value=1,
             command=lambda:print(algorithmvar.get()))
-            #command=lambda:setalgorithm(algorithm_num=1))
-        # Checkbutton 2
-        #v2 = StringVar()
-        #v2.set('librosa') # 初期化しない
         rb2 = ttk.Radiobutton(
             algorithmframe, text='愚直アルゴリズム',
             variable=algorithmvar,
             value=0,
             command=lambda:print(algorithmvar.get()))
-            #command=lambda:setalgorithm(algorithm_num=0))
-            #command=partial(setalgorithm,0))
         rb1.pack(side=TOP)
         rb2.pack(side=TOP)
         rb1['command']=lambda:setalgorithm(algorithm_num=1)
@@ -714,8 +707,6 @@ class WinodwClass(tk.Frame):
         image = Image.open("img/速度マイナス10パー.png").resize((50, 50))
         self.slowimage=ImageTk.PhotoImage(image)
         tk.Button(master, text="speed-10%", fg = "blue", image=self.slowimage,command=partial(backgroundprocess,b'left',''),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
-
-        #tk.Button(master, text="出力デバイス変更", fg = "blue",command=start_outputdeviceInputThread,font=("",20)).grid(row=4, column=0,columnspan=2, padx=10, pady=10)
 
         speedframe = ttk.Frame(entryframe, padding=5)
         IDirLabel = ttk.Label(speedframe, text="Speed=")
@@ -975,6 +966,8 @@ class PlaylistCanvas:
                 self.playlistframe.buttons[i].bind("<MouseWheel>", self.mouse_y_scroll)
     def getCanvas(self):
         return self.canvas
+    def getButtonList(self):
+        return self.playlistframe.buttons
     def move_start(self, event):
         self.playlistframe.canvas.scan_mark(event.x, event.y)
 
@@ -993,7 +986,6 @@ class PlayThread(threading.Thread):
     def run(self):
         info.mode=-1
         info.back_flag=False
-        info.shuffle_flag,info.directory_repeat_flag,info.one_repeat_flag=False,False,False
         info.next_play_index=0
         os.chdir(info.basedirname)
         playlist_label=[]
@@ -1156,9 +1148,16 @@ class PlayThread(threading.Thread):
                 return
             #canvas処理
             canvas=PlaylistCanvas(playlist=playlist)
+            buttons=canvas.getButtonList()
             canvas=canvas.getCanvas()
             while True:
                 print(index+1,"番目の",playlist[index],"を再生")
+                for i,button in enumerate(buttons):
+                    if i==index:
+                        button['bg']='yellow'
+                    else:
+                        button['bg']='SystemButtonFace'
+
                 playback(playlist[index])
                 if info.next_play_index!=0:
                     index=info.next_play_index-1
@@ -1184,6 +1183,7 @@ class PlayThread(threading.Thread):
         print("Playlistが終了しました")
         info.thread_play=None
         canvas.grid_forget()
+        info.root.title("音楽再生アプリ")
         #bar_ver.grid_forget()
         info.label['text']='--s/--s'
 
