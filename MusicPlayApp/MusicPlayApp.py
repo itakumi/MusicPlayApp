@@ -106,7 +106,6 @@ class PSThread(threading.Thread):
     def getdata(self):
         return self.data
 
-
 class AudioFile:
         if info.algorithm==0:
             chunk = 1024*2
@@ -186,7 +185,6 @@ class AudioFile:
                                 data=''
                             crossfadelength=2048
                             if info.Quickness < 1 or info.r12 >1:
-                            #if info.Quickness/info.r12 < 1:
                                 if self.wf.tell()==info.last:
                                     info.quit=True
                                     continue
@@ -194,7 +192,6 @@ class AudioFile:
                                     if self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength >=info.head:
                                         self.wf.setpos(self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength)
                                     data = self.wf.readframes(int(self.chunk)+crossfadelength)
-                            #elif info.Quickness/info.r12 > 1:
                             elif info.Quickness > 1 or info.r12 < 1:
                                 if self.wf.tell()==info.last:
                                     info.quit=True
@@ -206,10 +203,6 @@ class AudioFile:
                                     data = self.wf.readframes(int(self.chunk)+crossfadelength)
                             else:
                                 data = self.wf.readframes(int(self.chunk)+crossfadelength)
-                            # if (info.Quickness != 1 or info.r12 !=1) and len(data)==(self.chunk+crossfadelength)*4:
-                            #     data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength*2,int(self.wf.getframerate()*info.r12))
-                            # elif (info.Quickness != 1 or info.r12 !=1) and len(data)==(self.chunk+crossfadelength)*2:
-                            #     data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength,int(self.wf.getframerate()*info.r12))
                             if (info.Quickness != 1 or info.r12 !=1):
                                 data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength*(len(data)/(self.chunk+crossfadelength))/2,int(self.wf.getframerate()*info.r12))
                             data_pre=np.frombuffer(data_pre,dtype="int16")
@@ -244,7 +237,12 @@ class AudioFile:
                             thread_PS=PSThread(data)
                             thread_PS.start()
                             size=1024*2
-                            datakind=int(len(data)/(1024*128))
+                            datakind=int(len(data_pre)/(1024*128))
+                            if datakind==0:
+                                datakind=int(len(data)/(1024*128))
+                            if datakind==0:
+                                info.quit=True
+                                continue
                             for i in range(int(len(data_pre)/(size*datakind))+1):
                                 if info.quit:
                                     break
@@ -310,9 +308,17 @@ class AudioFile:
 
 def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_button=None,one_repeat_button=None,windowroot=None):
     if isinstance(kb,int):#playlistの曲のボタンが押されたとき
-        info.next_play_index=kb
-        info.back_flag=False
-        info.quit=True
+        if info.isfavorite==0:
+            info.next_play_index=kb
+            info.back_flag=False
+            info.quit=True
+        else:
+            if info.favorite_songlist[kb-1]==1:
+                info.next_play_index=kb
+                info.back_flag=False
+                info.quit=True
+            else:
+                messagebox.showinfo('エラー', 'お気に入り以外の曲を再生するにはお気に入りのみをoffにしてください')
     elif isinstance(kb,float):
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
@@ -616,15 +622,23 @@ def setalgorithm(algorithm_num):
         info.song.chunk=1024*2
         info.song.buffer=1024*2
         if info.thread_play is not None:
-            #info.song.renew(customrate=1)
             info.renew_flag=True
     elif algorithm_num==1:
         info.algorithm=1
         info.song.chunk=1024*128
         info.song.buffer=1024*2
         if info.thread_play is not None:
-            #info.song.renew(customrate=1)
             info.renew_flag=True
+def setisfavorite(isfavorite_num,isfavoritevar=None):
+    if isfavorite_num==0:
+        info.isfavorite=0
+    if isfavorite_num==1:
+        if 1 in info.favorite_songlist:
+            info.isfavorite=1
+        else:
+            messagebox.showinfo('エラー', '最低１曲お気に入り登録してください')
+            isfavoritevar.set(0)
+
 class WinodwClass(tk.Frame):
     PlayImage,RestartImage,exitImage=None,None,None
     stop_and_startimage=None
@@ -655,6 +669,24 @@ class WinodwClass(tk.Frame):
         rb1['command']=lambda:setalgorithm(algorithm_num=1)
         rb2['command']=lambda:setalgorithm(algorithm_num=0)
         algorithmframe.grid(row=0,column=0,columnspan=2)
+
+        isfavoriteframe = ttk.Frame(master, padding=(10))
+        info.isfavoritevar = IntVar(master=master,value=0)
+        rb3 = ttk.Radiobutton(
+            isfavoriteframe, text='通常',
+            variable=info.isfavoritevar,
+            value=0,
+            command=lambda:print(info.isfavoritevar.get()))
+        rb4 = ttk.Radiobutton(
+            isfavoriteframe, text='お気に入りのみ',
+            variable=info.isfavoritevar,
+            value=1,
+            command=lambda:print(info.isfavoritevar.get()))
+        rb3.pack(side=TOP)
+        rb4.pack(side=TOP)
+        rb3['command']=lambda:setisfavorite(isfavorite_num=0)
+        rb4['command']=lambda:setisfavorite(isfavorite_num=1,isfavoritevar=info.isfavoritevar)
+        isfavoriteframe.grid(row=3,column=0,columnspan=2)
 
         image = Image.open("img/フラット.png").resize((50, 50))
         self.flatimage=ImageTk.PhotoImage(image)
@@ -933,6 +965,8 @@ class PlayListTkinterClass(tk.Frame):
 
 class PlaylistCanvas:
     def __init__(self, playlist):
+        self.start_xy = None
+        self.x_y  = None
         self.canvas = tk.Canvas(info.root)
         self.playlistframe =  ScrollFrame(master=self.canvas, playlist=playlist)
         self.canvas.grid(row=1, column=6, rowspan=5,padx=10, pady=10,sticky="WNES")
@@ -941,15 +975,46 @@ class PlaylistCanvas:
         if len(playlist)>=8:
             for i in range(len(playlist)):
                 self.playlistframe.buttons[i].bind("<MouseWheel>", self.mouse_y_scroll)
+                self.playlistframe.buttons[i].bind("<Button-3>", partial(self.movesong,i))
+                self.playlistframe.buttons[i].bind("<Button-2>", partial(self.favoritesong,i))
     def getCanvas(self):
         return self.canvas
     def getButtonList(self):
         return self.playlistframe.buttons
-    def move_start(self, event):
-        self.playlistframe.canvas.scan_mark(event.x, event.y)
-
-    def move_move(self, event):
-        self.playlistframe.canvas.scan_dragto(event.x, event.y, gain=1)
+    def movesong(self, event,i):
+        if info.isfavorite==0:
+            if self.playlistframe.buttons[event]['bg']!='yellow':
+                if info.next_play_index==0:
+                    info.next_play_index=event+1
+                    self.playlistframe.buttons[event]['bg']='red'
+                elif info.next_play_index-1==event:
+                    info.next_play_index=0
+                    if info.favorite_songlist[event]==1:
+                        self.playlistframe.buttons[event]['bg']='pink'
+                    else:
+                        self.playlistframe.buttons[event]['bg']='SystemButtonFace'
+                else:
+                    if info.favorite_songlist[info.next_play_index-1]==1:
+                        self.playlistframe.buttons[info.next_play_index-1]['bg']='pink'
+                    else:
+                        self.playlistframe.buttons[info.next_play_index-1]['bg']='SystemButtonFace'
+                    info.next_play_index=event+1
+                    self.playlistframe.buttons[event]['bg']='red'
+    def favoritesong(self, event,i):
+        if info.favorite_songlist[event]==1:
+            info.favorite_songlist[event]=0
+            if self.playlistframe.buttons[event]['bg']=='yellow':
+                pass
+            else:
+                self.playlistframe.buttons[event]['bg']='SystemButtonFace'
+            self.playlistframe.buttons[event]['text']=self.playlistframe.buttons[event]['text'][1:]
+        else:
+            info.favorite_songlist[event]=1
+            if self.playlistframe.buttons[event]['bg']=='yellow':
+                pass
+            else:
+                self.playlistframe.buttons[event]['bg']='pink'
+            self.playlistframe.buttons[event]['text']='♥'+self.playlistframe.buttons[event]['text']
 
     def mouse_y_scroll(self, event):
         if event.delta > 0:
@@ -1117,6 +1182,7 @@ class PlayThread(threading.Thread):
             print("playlist=",playlist)
             index=0
             info.playlist_len=len(playlist)
+            info.favorite_songlist=[0]*len(playlist)
             if info.playlist_len==0:
                 messagebox.showinfo('エラー', 'playlistの曲がありません')
                 os.chdir("../")
@@ -1128,40 +1194,118 @@ class PlayThread(threading.Thread):
             buttons=canvas.getButtonList()
             canvas=canvas.getCanvas()
             while True:
-                print(index+1,"番目の",playlist[index],"を再生")
-                for i,button in enumerate(buttons):
-                    if i==index:
-                        button['bg']='yellow'
+                if info.isfavorite==1:
+                    if 1 in info.favorite_songlist[index:] and info.isfavorite==1:
+                        index=index+info.favorite_songlist[index:].index(1)
                     else:
-                        button['bg']='SystemButtonFace'
-
-                playback(playlist[index])
-                if info.next_play_index!=0:
-                    index=info.next_play_index-1
-                    info.next_play_index=0
-                elif info.back_flag:
-                    if index>=1:
-                        index-=1
+                        print("最後です")
+                        index=info.playlist_len
+                        if info.directory_repeat_flag:
+                            if info.isfavorite==1:
+                                index=info.favorite_songlist.index(1)
+                            else:
+                                index=0
+                        else:
+                            break
+                    print(index+1,"番目の",playlist[index],"を再生")
+                    for i,button in enumerate(buttons):
+                        if i==index:
+                            button['bg']='yellow'
+                        else:
+                            if info.favorite_songlist[i]==1:
+                                button['bg']='pink'
+                            else:
+                                button['bg']='SystemButtonFace'
+                    playback(playlist[index])
+                    if info.next_play_index!=0:
+                        if info.isfavorite==1:
+                            index=info.next_play_index-1
+                        else:
+                            index=info.next_play_index-1
+                        info.next_play_index=0
+                    elif info.back_flag:
+                        if 1 in info.favorite_songlist[:index] and info.isfavorite==1:
+                            rev=info.favorite_songlist[:index]
+                            rev.reverse()
+                            index=index-rev.index(1)-1
+                        else:
+                            if info.isfavorite==0:
+                                if index>=1:
+                                    index-=1
+                                else:
+                                    print("最初の曲です")
+                            else:
+                                print("最初の曲です")
+                        info.back_flag=False
+                    elif info.one_repeat_flag:
+                        pass
+                    elif info.shuffle_flag:
+                        indexes = [i for i, x in enumerate(info.favorite_songlist) if x == 1]
+                        if len(indexes)!=0:
+                            index=indexes[random.randint(0,len(indexes)-1)]
+                        else:
+                            index=random.randint(0,info.playlist_len-1)
                     else:
-                        print("最初の曲です")
-                    info.back_flag=False
-                elif info.one_repeat_flag:
-                    pass
-                elif info.shuffle_flag:
-                    index=random.randint(0,info.playlist_len-1)
+                        if index==len(info.favorite_songlist)-1:
+                            print("最後の曲です")
+                        index+=1
+                    if index ==info.playlist_len and info.directory_repeat_flag:
+                        index=0
+                    if index==info.playlist_len:
+                        break
                 else:
-                    if index==info.playlist_len-1:
-                        print("最後の曲です")
-                    index+=1
-                if index ==info.playlist_len and info.directory_repeat_flag:
-                    index=0
-                if index==info.playlist_len:
-                    break
+                    print(index+1,"番目の",playlist[index],"を再生")
+                    for i,button in enumerate(buttons):
+                        if i==index:
+                            button['bg']='yellow'
+                        else:
+                            if info.favorite_songlist[i]==1:
+                                button['bg']='pink'
+                            else:
+                                button['bg']='SystemButtonFace'
+                    playback(playlist[index])
+                    if info.next_play_index!=0:
+                        index=info.next_play_index-1
+                        info.next_play_index=0
+                    elif info.back_flag:
+                        if 1 in info.favorite_songlist[:index] and info.isfavorite==1:
+                            rev=info.favorite_songlist[:index]
+                            rev.reverse()
+                            print("normal=",info.favorite_songlist[:index],"        rev=",rev)
+                            print(index,"-",rev.index(1),"-1=",index-rev.index(1)-1)
+                            index=index-rev.index(1)-1
+                        else:
+                            if info.isfavorite==0:
+                                if index>=1:
+                                    index-=1
+                                else:
+                                    print("最初の曲です")
+                            else:
+                                print("最初の曲です")
+                        info.back_flag=False
+                    elif info.one_repeat_flag:
+                        pass
+                    elif info.shuffle_flag:
+                        indexes = [i for i, x in enumerate(info.favorite_songlist) if x == 1]
+                        if len(indexes)!=0:
+                            index=indexes[random.randint(0,len(indexes)-1)]
+                        else:
+                            index=random.randint(0,info.playlist_len-1)
+                    else:
+                        if index==info.playlist_len-1:
+                            print("最後の曲です")
+                        index+=1
+                    if index ==info.playlist_len and info.directory_repeat_flag:
+                        index=0
+                    if index==info.playlist_len:
+                        break
         print("Playlistが終了しました")
+        info.favorite_songlist.clear()
+        info.isfavorite=0
+        info.isfavoritevar.set(0)
         info.thread_play=None
         canvas.grid_forget()
         info.root.title("音楽再生アプリ")
-        #bar_ver.grid_forget()
         info.label['text']='--s/--s'
 
 def start_windowthread():
@@ -1229,13 +1373,6 @@ def start_outputdeviceInputThread():
     #thread_outputdevice.join()
 
 if __name__ == "__main__":
-    """
-    KeySpeedInputtk = Tk()
-    KeySpeedInput=KeySpeedInputClass(master=KeySpeedInputtk)
-    KeySpeedInput.mainloop()
-    info.Key=round(info.Key,1)
-    info.Quickness=round(info.Quickness,2)
-    """
     info.basedirname=os.path.dirname(os.path.abspath("__file__"))
     p=pyaudio.PyAudio()
     outputdevicelist=[]

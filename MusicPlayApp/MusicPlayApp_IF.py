@@ -50,6 +50,10 @@ class AudioInformation:
     volume=100
     algorithm=1 #0:愚直アルゴリズム、1:Librosa
     datalist=b''
+    playlist=[]
+    favorite_songlist=[]
+    isfavorite=0
+    isfavoritevar=None
 
 
 class ClassFrame(tk.Frame):
