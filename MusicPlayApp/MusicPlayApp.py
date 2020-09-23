@@ -185,16 +185,20 @@ class AudioFile:
                                 data_pre=data
                                 data=''
                             crossfadelength=2048
-                            if info.Quickness/info.r12 < 1:
+                            if info.Quickness < 1 or info.r12 >1:
+                            #if info.Quickness/info.r12 < 1:
                                 if self.wf.tell()==info.last:
                                     info.quit=True
+                                    continue
                                 else:
                                     if self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength >=info.head:
                                         self.wf.setpos(self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength)
                                     data = self.wf.readframes(int(self.chunk)+crossfadelength)
-                            elif info.Quickness/info.r12 > 1:
+                            #elif info.Quickness/info.r12 > 1:
+                            elif info.Quickness > 1 or info.r12 < 1:
                                 if self.wf.tell()==info.last:
                                     info.quit=True
+                                    continue
                                 else:
                                     if self.wf.tell()-crossfadelength >= info.head:
                                         self.wf.setpos(self.wf.tell()-crossfadelength)
@@ -202,8 +206,12 @@ class AudioFile:
                                     data = self.wf.readframes(int(self.chunk)+crossfadelength)
                             else:
                                 data = self.wf.readframes(int(self.chunk)+crossfadelength)
-                            if info.Quickness/info.r12 != 1 and len(data)==(self.chunk+crossfadelength)*4:
-                                data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength*2,int(self.wf.getframerate()*info.r12))
+                            # if (info.Quickness != 1 or info.r12 !=1) and len(data)==(self.chunk+crossfadelength)*4:
+                            #     data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength*2,int(self.wf.getframerate()*info.r12))
+                            # elif (info.Quickness != 1 or info.r12 !=1) and len(data)==(self.chunk+crossfadelength)*2:
+                            #     data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength,int(self.wf.getframerate()*info.r12))
+                            if (info.Quickness != 1 or info.r12 !=1):
+                                data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength*(len(data)/(self.chunk+crossfadelength))/2,int(self.wf.getframerate()*info.r12))
                             data_pre=np.frombuffer(data_pre,dtype="int16")
                             data_pre=data_pre.astype(np.float64)
                             data_pre=data_pre*round(float(info.volume),2)/100
@@ -215,6 +223,9 @@ class AudioFile:
                                 self.stream.write(data_pre)
 
                         if info.algorithm==1:
+                            if self.wf.tell()==info.last:
+                                info.quit=True
+                                continue
                             currentpos=self.wf.tell()
                             if data !='':
                                 dummy = self.wf.readframes(int(self.chunk))
@@ -233,74 +244,40 @@ class AudioFile:
                             thread_PS=PSThread(data)
                             thread_PS.start()
                             size=1024*2
-                            if currentpos+(self.chunk)<info.last:
-                                for i in range(int(len(data_pre)/(size*4))+1):
-                                    if info.quit:
+                            datakind=int(len(data)/(1024*128))
+                            for i in range(int(len(data_pre)/(size*datakind))+1):
+                                if info.quit:
+                                    break
+                                if msvcrt.kbhit():
+                                    backgroundprocess(msvcrt.getch(),'')
+                                if info.renew_flag:
+                                    self.renew()
+                                    info.renew_flag=False
+                                    self.wf.setpos(self.wf.tell())
+                                    data=''#多分ここが飛んでる原因
+                                    if info.stop_flag:
+                                        self.stream.stop_stream()
+                                        while self.stream.is_active()==False:
+                                            time.sleep(0.1)
+                                        self.stream.start_stream()
+                                    if info.stop_flag==False:
                                         break
-                                    if msvcrt.kbhit():
-                                        backgroundprocess(msvcrt.getch(),'')
-                                    if info.renew_flag:
-                                        self.renew()
-                                        info.renew_flag=False
-                                        self.wf.setpos(self.wf.tell())
-                                        data=''#多分ここが飛んでる原因
-                                        if info.stop_flag:
-                                            self.stream.stop_stream()
-                                            while self.stream.is_active()==False:
-                                                time.sleep(0.1)
-                                            self.stream.start_stream()
-                                        if info.stop_flag==False:
-                                            break
-                                    if i<int(len(data_pre)/(size*4)):
-                                        if self.stream.is_active():
-                                            if info.stop_flag:
-                                                thread_PS.join()
-                                                self.stream.stop_stream()
-                                            if self.stream.is_active():
-                                                dummy=self.wf.readframes(size)
-                                                self.stream.write(data_pre[(size*4)*i:(size*4)*(i+1)])
-                                    else:
-                                        if info.stop_flag:
-                                            self.stream.stop_stream()
-                                        if self.stream.is_active():
-                                            self.wf.setpos(nextpos)
-                                            self.stream.write(data_pre[(size*4)*i:])
-                                        thread_PS.join()
-                                        data_pre=thread_PS.getdata()
-                            else:
-                                lastdataindex=0
-                                while True:
-                                    if info.quit:
-                                        break
-                                    if msvcrt.kbhit():
-                                        backgroundprocess(msvcrt.getch(),'')
-                                    if info.renew_flag:
-                                        self.renew()
-                                        info.renew_flag=False
-                                        self.wf.setpos(self.wf.tell())
-                                        data=''#多分ここが飛んでる原因
-                                        if info.stop_flag:
-                                            thread_PS.join()
-                                            self.stream.stop_stream()
-                                        break
-                                    if (size*4)*(lastdataindex+1)<info.last:
-                                        dummy=self.wf.readframes(size)
+                                if i<int(len(data_pre)/(size*datakind)):
+                                    if self.stream.is_active():
                                         if info.stop_flag:
                                             thread_PS.join()
                                             self.stream.stop_stream()
                                         if self.stream.is_active():
-                                            self.stream.write(data_pre[(size*4)*lastdataindex:(size*4)*(lastdataindex+1)])
-                                    else:
-                                        if info.stop_flag:
-                                            thread_PS.join()
-                                            self.stream.stop_stream()
-                                        if self.stream.is_active():
-                                            self.stream.write(data_pre[(size*4)*lastdataindex:])
+                                            dummy=self.wf.readframes(size)
+                                            self.stream.write(data_pre[(size*datakind)*i:(size*datakind)*(i+1)])
+                                else:
+                                    if info.stop_flag:
+                                        self.stream.stop_stream()
+                                    if self.stream.is_active():
                                         self.wf.setpos(nextpos)
-                                        break
-                                    lastdataindex+=1
-                                thread_PS.join()
-                                data_pre=thread_PS.getdata()
+                                        self.stream.write(data_pre[(size*datakind)*i:])
+                                    thread_PS.join()
+                                    data_pre=thread_PS.getdata()
                     else:
                         if info.stop_flag ==False:
                             self.stream.start_stream()
