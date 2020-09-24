@@ -54,6 +54,7 @@ class AudioInformation:
     favorite_songlist=[]
     isfavorite=0
     isfavoritevar=None
+    algorithmvar=None
 
 
 class ClassFrame(tk.Frame):

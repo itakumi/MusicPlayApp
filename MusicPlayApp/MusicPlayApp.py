@@ -630,6 +630,7 @@ def setalgorithm(algorithm_num):
         if info.thread_play is not None:
             info.renew_flag=True
 def setisfavorite(isfavorite_num,isfavoritevar=None):
+    #print(menu['title'])
     if isfavorite_num==0:
         info.isfavorite=0
     if isfavorite_num==1:
@@ -652,6 +653,7 @@ class WinodwClass(tk.Frame):
         master.title("音楽再生アプリ") #タイトル作成
         #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
+        """
         algorithmframe = ttk.Frame(master, padding=(10))
         algorithmvar = IntVar(master=master,value=1)
         rb1 = ttk.Radiobutton(
@@ -669,7 +671,9 @@ class WinodwClass(tk.Frame):
         rb1['command']=lambda:setalgorithm(algorithm_num=1)
         rb2['command']=lambda:setalgorithm(algorithm_num=0)
         algorithmframe.grid(row=0,column=0,columnspan=2)
+        """
 
+        """
         isfavoriteframe = ttk.Frame(master, padding=(10))
         info.isfavoritevar = IntVar(master=master,value=0)
         rb3 = ttk.Radiobutton(
@@ -687,6 +691,7 @@ class WinodwClass(tk.Frame):
         rb3['command']=lambda:setisfavorite(isfavorite_num=0)
         rb4['command']=lambda:setisfavorite(isfavorite_num=1,isfavoritevar=info.isfavoritevar)
         isfavoriteframe.grid(row=3,column=0,columnspan=2)
+        """
 
         image = Image.open("img/フラット.png").resize((50, 50))
         self.flatimage=ImageTk.PhotoImage(image)
@@ -825,7 +830,35 @@ class WinodwClass(tk.Frame):
         volume_label_100=tk.Label(volumescaleframe, text="100")
         volume_label_100.pack(side=tk.RIGHT)
         volumescaleframe.grid(row=0,column=3,columnspan=2,sticky=(E))
+        self.menu_create()
+    def menu_create(self):
+        self.menu_ROOT = Menu(self.master)
 
+        self.menu_FILE = Menu(self.menu_ROOT, tearoff = False)
+        self.menu_EDIT = Menu(self.menu_ROOT, tearoff = False)
+        self.menu_RUN = Menu(self.menu_ROOT, tearoff = False)
+
+        self.master.configure(menu = self.menu_ROOT)
+
+        info.algorithmvar = StringVar(value=1)
+
+        self.menu_ROOT.add_cascade(label = 'アルゴリズム', under = 0, menu = self.menu_FILE)
+        self.menu_FILE.add_radiobutton(label = 'libosa', command = lambda:setalgorithm(algorithm_num=1),variable=info.algorithmvar,value=1)
+        self.menu_FILE.add_radiobutton(label = '愚直アルゴリズム', command = lambda:setalgorithm(algorithm_num=0),variable=info.algorithmvar,value=0)
+
+        #nonfavorite = StringVar(value=1)
+        info.isfavoritevar = StringVar(value=0)
+
+        self.menu_ROOT.add_cascade(label = '再生モード', under = 0, menu = self.menu_EDIT)
+        self.menu_EDIT.add_radiobutton(label = '通常', command = lambda:setisfavorite(isfavorite_num=0),variable=info.isfavoritevar,value=0)
+        self.menu_EDIT.add_radiobutton(label = 'お気に入りのみ', command = lambda:setisfavorite(isfavorite_num=1,isfavoritevar=info.isfavoritevar),variable=info.isfavoritevar,value=1)
+
+        """
+        self.menu_ROOT.add_cascade(label = '標準再生', under = 0, menu = self.menu_RUN)
+        self.menu_RUN.add_command(label = 'シャッフル', command = self.menu_test1)
+        self.menu_RUN.add_command(label = 'フォルダリピート', command = self.menu_test1)
+        self.menu_RUN.add_command(label = '1曲リピート', command = self.menu_test1)
+        """
 def pos_renew(root,scaleframe):
     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
         val = DoubleVar(master=root,value=int((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))
@@ -848,7 +881,11 @@ def window():
 
 def getplaytime(root):
     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
-        info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s"
+        currentminutes,currentseconds=divmod((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration,60)
+        lastminutes,lastseconds=divmod(info.duration,60)
+        #info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s"
+        info.label['text']=str(int(currentminutes))+str(':{:05.2f}'.format(currentseconds))+"/"+str(int(lastminutes))+str(':{:05.2f}'.format(lastseconds))
+        # info.label['text']=str(currentminutes)+str(currentseconds)+"s/"+str(lastminutes)+str(lastseconds)+"s"
     root.after(100,getplaytime,root)
 
 class PlayListTkinterThread(threading.Thread):
@@ -963,10 +1000,13 @@ class PlayListTkinterClass(tk.Frame):
         frame3 = ttk.Frame(master, padding=10)
         frame3.grid(row=7,column=1,sticky=W)
 
-class PlaylistCanvas:
+class PlaylistCanvas():
+    popup_menu=None
     def __init__(self, playlist):
         self.start_xy = None
         self.x_y  = None
+        #self.popup_menu = [tkinter.Menu(info.root, tearoff=0)]*len(playlist)
+        self.popup_menu = []
         self.canvas = tk.Canvas(info.root)
         self.playlistframe =  ScrollFrame(master=self.canvas, playlist=playlist)
         self.canvas.grid(row=1, column=6, rowspan=5,padx=10, pady=10,sticky="WNES")
@@ -974,47 +1014,64 @@ class PlaylistCanvas:
         self.playlistframe.interior.bind("<MouseWheel>",self.mouse_y_scroll)
         if len(playlist)>=8:
             for i in range(len(playlist)):
+                self.popup_menu.append(tkinter.Menu(info.root, tearoff=0))
+                self.popup_menu[i].add_command(label="次に再生/解除",
+                                    command=partial(self.movesong,i=i))
+                self.popup_menu[i].add_command(label="お気に入り登録/解除",
+                                           command=partial(self.favoritesong,i=i))
                 self.playlistframe.buttons[i].bind("<MouseWheel>", self.mouse_y_scroll)
-                self.playlistframe.buttons[i].bind("<Button-3>", partial(self.movesong,i))
-                self.playlistframe.buttons[i].bind("<Button-2>", partial(self.favoritesong,i))
+                #self.playlistframe.buttons[i].bind("<Button-3>", partial(self.movesong,i))
+                self.playlistframe.buttons[i].bind("<Button-3>", partial(self.popup,i)) # Button-2 on Aqua
+                self.playlistframe.buttons[i].bind("<Button-2>", partial(self.favoritesong,i=i))
+    def delete_selected():
+        pass
+    def select_all():
+        pass
+    def popup(self, i,event):
+        try:
+            self.popup_menu[i].tk_popup(event.x_root, event.y_root, 0)
+        finally:
+            self.popup_menu[i].grab_release()
     def getCanvas(self):
         return self.canvas
     def getButtonList(self):
         return self.playlistframe.buttons
-    def movesong(self, event,i):
+    def movesong(self, event=None,i=None):
         if info.isfavorite==0:
-            if self.playlistframe.buttons[event]['bg']!='yellow':
+            if self.playlistframe.buttons[i]['bg']!='yellow':
                 if info.next_play_index==0:
-                    info.next_play_index=event+1
-                    self.playlistframe.buttons[event]['bg']='red'
-                elif info.next_play_index-1==event:
+                    info.next_play_index=i+1
+                    self.playlistframe.buttons[i]['bg']='red'
+                elif info.next_play_index-1==i:
                     info.next_play_index=0
-                    if info.favorite_songlist[event]==1:
-                        self.playlistframe.buttons[event]['bg']='pink'
+                    if info.favorite_songlist[i]==1:
+                        self.playlistframe.buttons[i]['bg']='pink'
                     else:
-                        self.playlistframe.buttons[event]['bg']='SystemButtonFace'
+                        self.playlistframe.buttons[i]['bg']='SystemButtonFace'
                 else:
                     if info.favorite_songlist[info.next_play_index-1]==1:
                         self.playlistframe.buttons[info.next_play_index-1]['bg']='pink'
                     else:
                         self.playlistframe.buttons[info.next_play_index-1]['bg']='SystemButtonFace'
-                    info.next_play_index=event+1
-                    self.playlistframe.buttons[event]['bg']='red'
-    def favoritesong(self, event,i):
-        if info.favorite_songlist[event]==1:
-            info.favorite_songlist[event]=0
-            if self.playlistframe.buttons[event]['bg']=='yellow':
+                    info.next_play_index=i+1
+                    self.playlistframe.buttons[i]['bg']='red'
+            else:
+                messagebox.showinfo('エラー', '再生中の曲は指定できません')
+    def favoritesong(self, event=None,i=None):
+        if info.favorite_songlist[i]==1:
+            info.favorite_songlist[i]=0
+            if self.playlistframe.buttons[i]['bg']=='yellow' or self.playlistframe.buttons[i]['bg']=='red':
                 pass
             else:
-                self.playlistframe.buttons[event]['bg']='SystemButtonFace'
-            self.playlistframe.buttons[event]['text']=self.playlistframe.buttons[event]['text'][1:]
+                self.playlistframe.buttons[i]['bg']='SystemButtonFace'
+            self.playlistframe.buttons[i]['text']=self.playlistframe.buttons[i]['text'][1:]
         else:
-            info.favorite_songlist[event]=1
-            if self.playlistframe.buttons[event]['bg']=='yellow':
+            info.favorite_songlist[i]=1
+            if self.playlistframe.buttons[i]['bg']=='yellow' or self.playlistframe.buttons[i]['bg']=='red':
                 pass
             else:
-                self.playlistframe.buttons[event]['bg']='pink'
-            self.playlistframe.buttons[event]['text']='♥'+self.playlistframe.buttons[event]['text']
+                self.playlistframe.buttons[i]['bg']='pink'
+            self.playlistframe.buttons[i]['text']='♥'+self.playlistframe.buttons[i]['text']
 
     def mouse_y_scroll(self, event):
         if event.delta > 0:
