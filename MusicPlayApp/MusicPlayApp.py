@@ -459,7 +459,7 @@ def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_butt
         print("Speed=",round(info.Quickness,3))
     elif kb.decode()=='q':
         if info.song is not None and info.thread_play is not None:
-            info.next_play_index=info.playlist_len+1
+            info.next_play_index=info.playlist_len+2
             info.back_flag=False
             info.quit=True
         elif info.thread_play is None:
@@ -630,12 +630,53 @@ def setalgorithm(algorithm_num):
         if info.thread_play is not None:
             info.renew_flag=True
 def setisfavorite(isfavorite_num,isfavoritevar=None):
-    #print(menu['title'])
     if isfavorite_num==0:
         info.isfavorite=0
     if isfavorite_num==1:
         if 1 in info.favorite_songlist:
             info.isfavorite=1
+            if len(info.next_play_index_list)!=0:
+                i=0
+                delflag=False
+                while True:
+                    i_label=info.menu_playlist.entrycget(i,"label")
+                    i_label=i_label[i_label.find('→')+1:i_label.find(':')]
+                    if info.favorite_songlist[int(i_label)-1]==0:
+                        if delflag==False:
+                            delflag = messagebox.askyesno('確認', '「お気に入りのみ」にすると「次に再生」リストからお気に入りされていない曲が削除されます。続けますか？')
+                        if delflag==True:
+                            del info.next_play_index_list[i]
+                            info.menu_playlist.delete(i)#削除
+                            del info.canvas.second_menu[i]
+                            id=i
+                            while True:
+                                if id==len(info.next_play_index_list):
+                                    break
+                                else:
+                                    i_label=info.menu_playlist.entrycget(id,"label")
+                                    info.canvas.second_menu[id].entryconfigure(0, command=partial(info.canvas.deletesong_fromnextplayindexlist,i=id))#更新
+                                    if (id+1)%10==1:
+                                        ordinal_end='st'
+                                    elif (id+1)%10==2:
+                                        ordinal_end='nd'
+                                    elif (id+1)%10==3:
+                                        ordinal_end='rd'
+                                    else:
+                                        ordinal_end='th'
+                                    info.menu_playlist.entryconfigure(id,label=str(int(id)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
+                                    id+=1
+                            if len(info.next_play_index_list)!=0:
+                                info.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                            else:
+                                info.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+                        else:
+                            info.isfavorite=0
+                            isfavoritevar.set(0)
+                            break
+                    else:
+                        i+=1
+                    if i==len(info.next_play_index_list):
+                        break
         else:
             messagebox.showinfo('エラー', '最低１曲お気に入り登録してください')
             isfavoritevar.set(0)
@@ -651,47 +692,7 @@ class WinodwClass(tk.Frame):
     def __init__(self,master):
         super().__init__(master)
         master.title("音楽再生アプリ") #タイトル作成
-        #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
-
-        """
-        algorithmframe = ttk.Frame(master, padding=(10))
-        algorithmvar = IntVar(master=master,value=1)
-        rb1 = ttk.Radiobutton(
-            algorithmframe, text='librosa',
-            variable=algorithmvar,
-            value=1,
-            command=lambda:print(algorithmvar.get()))
-        rb2 = ttk.Radiobutton(
-            algorithmframe, text='愚直アルゴリズム',
-            variable=algorithmvar,
-            value=0,
-            command=lambda:print(algorithmvar.get()))
-        rb1.pack(side=TOP)
-        rb2.pack(side=TOP)
-        rb1['command']=lambda:setalgorithm(algorithm_num=1)
-        rb2['command']=lambda:setalgorithm(algorithm_num=0)
-        algorithmframe.grid(row=0,column=0,columnspan=2)
-        """
-
-        """
-        isfavoriteframe = ttk.Frame(master, padding=(10))
-        info.isfavoritevar = IntVar(master=master,value=0)
-        rb3 = ttk.Radiobutton(
-            isfavoriteframe, text='通常',
-            variable=info.isfavoritevar,
-            value=0,
-            command=lambda:print(info.isfavoritevar.get()))
-        rb4 = ttk.Radiobutton(
-            isfavoriteframe, text='お気に入りのみ',
-            variable=info.isfavoritevar,
-            value=1,
-            command=lambda:print(info.isfavoritevar.get()))
-        rb3.pack(side=TOP)
-        rb4.pack(side=TOP)
-        rb3['command']=lambda:setisfavorite(isfavorite_num=0)
-        rb4['command']=lambda:setisfavorite(isfavorite_num=1,isfavoritevar=info.isfavoritevar)
-        isfavoriteframe.grid(row=3,column=0,columnspan=2)
-        """
+        master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
         image = Image.open("img/フラット.png").resize((50, 50))
         self.flatimage=ImageTk.PhotoImage(image)
@@ -832,33 +833,27 @@ class WinodwClass(tk.Frame):
         volumescaleframe.grid(row=0,column=3,columnspan=2,sticky=(E))
         self.menu_create()
     def menu_create(self):
-        self.menu_ROOT = Menu(self.master)
+        info.menu_ROOT = Menu(self.master)
 
-        self.menu_FILE = Menu(self.menu_ROOT, tearoff = False)
-        self.menu_EDIT = Menu(self.menu_ROOT, tearoff = False)
-        self.menu_RUN = Menu(self.menu_ROOT, tearoff = False)
+        self.menu_FILE = Menu(info.menu_ROOT, tearoff = False)
+        self.menu_EDIT = Menu(info.menu_ROOT, tearoff = False)
+        info.menu_playlist = Menu(info.menu_ROOT, tearoff = False)
 
-        self.master.configure(menu = self.menu_ROOT)
+        self.master.configure(menu = info.menu_ROOT)
 
         info.algorithmvar = StringVar(value=1)
 
-        self.menu_ROOT.add_cascade(label = 'アルゴリズム', under = 0, menu = self.menu_FILE)
+        info.menu_ROOT.add_cascade(label = 'アルゴリズム', under = 0, menu = self.menu_FILE)
         self.menu_FILE.add_radiobutton(label = 'libosa', command = lambda:setalgorithm(algorithm_num=1),variable=info.algorithmvar,value=1)
         self.menu_FILE.add_radiobutton(label = '愚直アルゴリズム', command = lambda:setalgorithm(algorithm_num=0),variable=info.algorithmvar,value=0)
 
-        #nonfavorite = StringVar(value=1)
         info.isfavoritevar = StringVar(value=0)
 
-        self.menu_ROOT.add_cascade(label = '再生モード', under = 0, menu = self.menu_EDIT)
+        info.menu_ROOT.add_cascade(label = '再生モード', under = 0, menu = self.menu_EDIT)
         self.menu_EDIT.add_radiobutton(label = '通常', command = lambda:setisfavorite(isfavorite_num=0),variable=info.isfavoritevar,value=0)
         self.menu_EDIT.add_radiobutton(label = 'お気に入りのみ', command = lambda:setisfavorite(isfavorite_num=1,isfavoritevar=info.isfavoritevar),variable=info.isfavoritevar,value=1)
 
-        """
-        self.menu_ROOT.add_cascade(label = '標準再生', under = 0, menu = self.menu_RUN)
-        self.menu_RUN.add_command(label = 'シャッフル', command = self.menu_test1)
-        self.menu_RUN.add_command(label = 'フォルダリピート', command = self.menu_test1)
-        self.menu_RUN.add_command(label = '1曲リピート', command = self.menu_test1)
-        """
+        info.menu_ROOT.add_cascade(label = '次に再生', under = 0, menu = info.menu_playlist)
 def pos_renew(root,scaleframe):
     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
         val = DoubleVar(master=root,value=int((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))
@@ -883,9 +878,8 @@ def getplaytime(root):
     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
         currentminutes,currentseconds=divmod((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration,60)
         lastminutes,lastseconds=divmod(info.duration,60)
-        #info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s"
-        info.label['text']=str(int(currentminutes))+str(':{:05.2f}'.format(currentseconds))+"/"+str(int(lastminutes))+str(':{:05.2f}'.format(lastseconds))
-        # info.label['text']=str(currentminutes)+str(currentseconds)+"s/"+str(lastminutes)+str(lastseconds)+"s"
+        #info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s" #秒出力
+        info.label['text']=str(int(currentminutes))+str(':{:05.2f}'.format(currentseconds))+"/"+str(int(lastminutes))+str(':{:05.2f}'.format(lastseconds)) #分出力
     root.after(100,getplaytime,root)
 
 class PlayListTkinterThread(threading.Thread):
@@ -1005,8 +999,8 @@ class PlaylistCanvas():
     def __init__(self, playlist):
         self.start_xy = None
         self.x_y  = None
-        #self.popup_menu = [tkinter.Menu(info.root, tearoff=0)]*len(playlist)
         self.popup_menu = []
+        self.second_menu = []
         self.canvas = tk.Canvas(info.root)
         self.playlistframe =  ScrollFrame(master=self.canvas, playlist=playlist)
         self.canvas.grid(row=1, column=6, rowspan=5,padx=10, pady=10,sticky="WNES")
@@ -1015,56 +1009,154 @@ class PlaylistCanvas():
         if len(playlist)>=8:
             for i in range(len(playlist)):
                 self.popup_menu.append(tkinter.Menu(info.root, tearoff=0))
-                self.popup_menu[i].add_command(label="次に再生/解除",
-                                    command=partial(self.movesong,i=i))
+                self.popup_menu[i].add_command(label="「次に再生」リストに追加",
+                                           command=partial(self.add_nextplaylist,i=i))
                 self.popup_menu[i].add_command(label="お気に入り登録/解除",
                                            command=partial(self.favoritesong,i=i))
                 self.playlistframe.buttons[i].bind("<MouseWheel>", self.mouse_y_scroll)
-                #self.playlistframe.buttons[i].bind("<Button-3>", partial(self.movesong,i))
                 self.playlistframe.buttons[i].bind("<Button-3>", partial(self.popup,i)) # Button-2 on Aqua
                 self.playlistframe.buttons[i].bind("<Button-2>", partial(self.favoritesong,i=i))
-    def delete_selected():
-        pass
-    def select_all():
-        pass
+    def setactive(self):
+        for x in range(len(self.playlistframe.buttons)):
+            self.playlistframe.buttons[x].configure(state=tk.NORMAL)
     def popup(self, i,event):
         try:
+            for x in range(len(self.playlistframe.buttons)):
+                self.playlistframe.buttons[x].configure(state=tk.DISABLED)
             self.popup_menu[i].tk_popup(event.x_root, event.y_root, 0)
         finally:
             self.popup_menu[i].grab_release()
+            self.playlistframe.buttons[i].after(10,self.setactive)
     def getCanvas(self):
         return self.canvas
     def getButtonList(self):
         return self.playlistframe.buttons
-    def movesong(self, event=None,i=None):
-        if info.isfavorite==0:
-            if self.playlistframe.buttons[i]['bg']!='yellow':
-                if info.next_play_index==0:
-                    info.next_play_index=i+1
-                    self.playlistframe.buttons[i]['bg']='red'
-                elif info.next_play_index-1==i:
-                    info.next_play_index=0
-                    if info.favorite_songlist[i]==1:
-                        self.playlistframe.buttons[i]['bg']='pink'
-                    else:
-                        self.playlistframe.buttons[i]['bg']='SystemButtonFace'
-                else:
-                    if info.favorite_songlist[info.next_play_index-1]==1:
-                        self.playlistframe.buttons[info.next_play_index-1]['bg']='pink'
-                    else:
-                        self.playlistframe.buttons[info.next_play_index-1]['bg']='SystemButtonFace'
-                    info.next_play_index=i+1
-                    self.playlistframe.buttons[i]['bg']='red'
+    def deletesong_fromnextplayindexlist(self,event=None,i=None):
+        del info.next_play_index_list[i]
+        info.menu_playlist.delete(i)#削除
+        del self.second_menu[i]
+        while True:
+            if i==len(info.next_play_index_list):
+                break
             else:
-                messagebox.showinfo('エラー', '再生中の曲は指定できません')
+                i_label=info.menu_playlist.entrycget(i,"label")
+                info.canvas.second_menu[i].entryconfigure(0, command=partial(info.canvas.deletesong_fromnextplayindexlist,i=i))#更新
+                if (i+1)%10==1:
+                    ordinal_end='st'
+                elif (i+1)%10==2:
+                    ordinal_end='nd'
+                elif (i+1)%10==3:
+                    ordinal_end='rd'
+                else:
+                    ordinal_end='th'
+                info.menu_playlist.entryconfigure(i,label=str(int(i)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
+                i+=1
+        if len(info.next_play_index_list)!=0:
+            info.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+        else:
+            info.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+    def add_nextplaylist(self, event=None,i=None):
+        if info.isfavorite==0 or (info.isfavorite==1 and info.favorite_songlist[i]==1):
+            self.playlistframe.buttons[i].after(100,lambda: self.playlistframe.buttons[i].configure(state=tk.DISABLED))
+            info.next_play_index_list.append(i+1)
+            self.second_menu.append(Menu(info.menu_playlist,tearoff=0))
+            if len(info.next_play_index_list)%10==1:
+                ordinal_end='st'
+            elif len(info.next_play_index_list)%10==2:
+                ordinal_end='nd'
+            elif len(info.next_play_index_list)%10==3:
+                ordinal_end='rd'
+            else:
+                ordinal_end='th'
+            if self.playlistframe.buttons[i]['text'][0]=='♥':
+                info.menu_playlist.add_cascade(label = str(len(info.next_play_index_list))+ordinal_end+'→'+self.playlistframe.buttons[i]['text'][1:],menu=self.second_menu[-1],under=5)
+            else:
+                info.menu_playlist.add_cascade(label = str(len(info.next_play_index_list))+ordinal_end+'→'+self.playlistframe.buttons[i]['text'],menu=self.second_menu[-1],under=5)
+            self.second_menu[-1].add_command(label='リストから削除',under=4,command=partial(self.deletesong_fromnextplayindexlist,i=len(info.next_play_index_list)-1))
+            if len(info.next_play_index_list)!=0:
+                info.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+            else:
+                info.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+            if self.playlistframe.buttons[i]['bg']=='yellow':
+                self.playlistframe.buttons[i]['bg']='red'
+                self.playlistframe.buttons[i].after(100,lambda: self.playlistframe.buttons[i].configure(bg='yellow'))
+                self.playlistframe.buttons[i].after(200,lambda: self.playlistframe.buttons[i].configure(bg='red'))
+                self.playlistframe.buttons[i].after(300,lambda: self.playlistframe.buttons[i].configure(bg='yellow'))
+                self.playlistframe.buttons[i].after(310,lambda: self.playlistframe.buttons[i].configure(state=tk.NORMAL))
+            if self.playlistframe.buttons[i]['bg']=='pink':
+                self.playlistframe.buttons[i]['bg']='red'
+                self.playlistframe.buttons[i].after(100,lambda: self.playlistframe.buttons[i].configure(bg='pink'))
+                self.playlistframe.buttons[i].after(200,lambda: self.playlistframe.buttons[i].configure(bg='red'))
+                self.playlistframe.buttons[i].after(300,lambda: self.playlistframe.buttons[i].configure(bg='pink'))
+                self.playlistframe.buttons[i].after(310,lambda: self.playlistframe.buttons[i].configure(state=tk.NORMAL))
+            if self.playlistframe.buttons[i]['bg']=='SystemButtonFace':
+                self.playlistframe.buttons[i]['bg']='red'
+                self.playlistframe.buttons[i].after(100,lambda: self.playlistframe.buttons[i].configure(bg='SystemButtonFace'))
+                self.playlistframe.buttons[i].after(200,lambda: self.playlistframe.buttons[i].configure(bg='red'))
+                self.playlistframe.buttons[i].after(300,lambda: self.playlistframe.buttons[i].configure(bg='SystemButtonFace'))
+                self.playlistframe.buttons[i].after(310,lambda: self.playlistframe.buttons[i].configure(state=tk.NORMAL))
+        else:
+            messagebox.showinfo('エラー', '「お気に入りのみ」モード中はお気に入り以外の曲を追加できません')
     def favoritesong(self, event=None,i=None):
         if info.favorite_songlist[i]==1:
-            info.favorite_songlist[i]=0
-            if self.playlistframe.buttons[i]['bg']=='yellow' or self.playlistframe.buttons[i]['bg']=='red':
-                pass
+            if sum(x==1 for x in info.favorite_songlist)==1 and info.isfavorite==1:
+                messagebox.showinfo('エラー', 'お気に入りの曲は最低１曲お願いします')
             else:
-                self.playlistframe.buttons[i]['bg']='SystemButtonFace'
-            self.playlistframe.buttons[i]['text']=self.playlistframe.buttons[i]['text'][1:]
+                if info.isfavorite==1:
+                    info.favorite_songlist[i]=0
+                    id=0
+                    delflag=False
+                    while True:
+                        i_label=info.menu_playlist.entrycget(id,"label")
+                        i_label=i_label[i_label.find('→')+1:i_label.find(':')]
+                        if info.favorite_songlist[int(i_label)-1]==0:
+                            if delflag==False:
+                                delflag = messagebox.askyesno('確認', '「次に再生」リストから'+self.playlistframe.buttons[i]['text'][1:]+'が削除されます。続けますか？')
+                            if delflag==True:
+                                del info.next_play_index_list[id]
+                                info.menu_playlist.delete(id)#削除
+                                del info.canvas.second_menu[id]
+                                id_prime=id
+                                while True:
+                                    if id_prime==len(info.next_play_index_list):
+                                        break
+                                    else:
+                                        i_label=info.menu_playlist.entrycget(id_prime,"label")
+                                        info.canvas.second_menu[id_prime].entryconfigure(0, command=partial(info.canvas.deletesong_fromnextplayindexlist,i=id_prime))#更新
+                                        if (id_prime+1)%10==1:
+                                            ordinal_end='st'
+                                        elif (id_prime+1)%10==2:
+                                            ordinal_end='nd'
+                                        elif (id_prime+1)%10==3:
+                                            ordinal_end='rd'
+                                        else:
+                                            ordinal_end='th'
+                                        info.menu_playlist.entryconfigure(id_prime,label=str(int(id_prime)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
+                                        id_prime+=1
+
+                                if len(info.next_play_index_list)!=0:
+                                    info.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                                else:
+                                    info.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+                            else:
+                                info.favorite_songlist[i]=1
+                                return
+                        else:
+                            id+=1
+                        if id==len(info.next_play_index_list):
+                            break
+                    if self.playlistframe.buttons[i]['bg']=='yellow' or self.playlistframe.buttons[i]['bg']=='red':
+                        pass
+                    else:
+                        self.playlistframe.buttons[i]['bg']='SystemButtonFace'
+                    self.playlistframe.buttons[i]['text']=self.playlistframe.buttons[i]['text'][1:]
+                else:
+                    info.favorite_songlist[i]=0
+                    if self.playlistframe.buttons[i]['bg']=='yellow' or self.playlistframe.buttons[i]['bg']=='red':
+                        pass
+                    else:
+                        self.playlistframe.buttons[i]['bg']='SystemButtonFace'
+                    self.playlistframe.buttons[i]['text']=self.playlistframe.buttons[i]['text'][1:]
         else:
             info.favorite_songlist[i]=1
             if self.playlistframe.buttons[i]['bg']=='yellow' or self.playlistframe.buttons[i]['bg']=='red':
@@ -1247,9 +1339,9 @@ class PlayThread(threading.Thread):
                 info.thread_play=None
                 return
             #canvas処理
-            canvas=PlaylistCanvas(playlist=playlist)
-            buttons=canvas.getButtonList()
-            canvas=canvas.getCanvas()
+            info.canvas=PlaylistCanvas(playlist=playlist)
+            buttons=info.canvas.getButtonList()
+            canvas=info.canvas.getCanvas()
             while True:
                 if info.isfavorite==1:
                     if 1 in info.favorite_songlist[index:] and info.isfavorite==1:
@@ -1280,6 +1372,35 @@ class PlayThread(threading.Thread):
                         else:
                             index=info.next_play_index-1
                         info.next_play_index=0
+                    elif len(info.next_play_index_list)!=0:
+                        if info.isfavorite==1:
+                            index=info.next_play_index_list[0]-1
+                        else:
+                            index=info.next_play_index_list[0]-1
+                        del info.next_play_index_list[0]
+                        info.menu_playlist.delete(0)#削除
+                        del info.canvas.second_menu[0]
+                        id=0
+                        while True:
+                            if id==len(info.next_play_index_list):
+                                break
+                            else:
+                                i_label=info.menu_playlist.entrycget(id,"label")
+                                info.canvas.second_menu[id].entryconfigure(0, command=partial(info.canvas.deletesong_fromnextplayindexlist,i=id))#更新
+                                if (id+1)%10==1:
+                                    ordinal_end='st'
+                                elif (id+1)%10==2:
+                                    ordinal_end='nd'
+                                elif (id+1)%10==3:
+                                    ordinal_end='rd'
+                                else:
+                                    ordinal_end='th'
+                                info.menu_playlist.entryconfigure(id,label=str(int(id)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
+                                id+=1
+                        if len(info.next_play_index_list)!=0:
+                            info.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                        else:
+                            info.menu_ROOT.entryconfigure(3, label='次に再生')#更新
                     elif info.back_flag:
                         if 1 in info.favorite_songlist[:index] and info.isfavorite==1:
                             rev=info.favorite_songlist[:index]
@@ -1308,7 +1429,7 @@ class PlayThread(threading.Thread):
                         index+=1
                     if index ==info.playlist_len and info.directory_repeat_flag:
                         index=0
-                    if index==info.playlist_len:
+                    if index>=info.playlist_len:
                         break
                 else:
                     print(index+1,"番目の",playlist[index],"を再生")
@@ -1324,12 +1445,39 @@ class PlayThread(threading.Thread):
                     if info.next_play_index!=0:
                         index=info.next_play_index-1
                         info.next_play_index=0
+                    elif len(info.next_play_index_list)!=0:
+                        if info.isfavorite==1:
+                            index=info.next_play_index_list[0]-1
+                        else:
+                            index=info.next_play_index_list[0]-1
+                        del info.next_play_index_list[0]
+                        info.menu_playlist.delete(0)#削除
+                        del info.canvas.second_menu[0]
+                        id=0
+                        while True:
+                            if id==len(info.next_play_index_list):
+                                break
+                            else:
+                                i_label=info.menu_playlist.entrycget(id,"label")
+                                info.canvas.second_menu[id].entryconfigure(0, command=partial(info.canvas.deletesong_fromnextplayindexlist,i=id))#更新
+                                if (id+1)%10==1:
+                                    ordinal_end='st'
+                                elif (id+1)%10==2:
+                                    ordinal_end='nd'
+                                elif (id+1)%10==3:
+                                    ordinal_end='rd'
+                                else:
+                                    ordinal_end='th'
+                                info.menu_playlist.entryconfigure(id,label=str(int(id)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
+                                id+=1
+                        if len(info.next_play_index_list)!=0:
+                            info.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                        else:
+                            info.menu_ROOT.entryconfigure(3, label='次に再生')#更新
                     elif info.back_flag:
                         if 1 in info.favorite_songlist[:index] and info.isfavorite==1:
                             rev=info.favorite_songlist[:index]
                             rev.reverse()
-                            print("normal=",info.favorite_songlist[:index],"        rev=",rev)
-                            print(index,"-",rev.index(1),"-1=",index-rev.index(1)-1)
                             index=index-rev.index(1)-1
                         else:
                             if info.isfavorite==0:
@@ -1354,10 +1502,15 @@ class PlayThread(threading.Thread):
                         index+=1
                     if index ==info.playlist_len and info.directory_repeat_flag:
                         index=0
-                    if index==info.playlist_len:
+                    if index>=info.playlist_len:
                         break
         print("Playlistが終了しました")
         info.favorite_songlist.clear()
+        for i in range(len(info.next_play_index_list)):
+            del info.next_play_index_list[0]
+            info.menu_playlist.delete(0)#削除
+            del info.canvas.second_menu[0]
+        info.menu_ROOT.entryconfigure(3, label='次に再生')#更新
         info.isfavorite=0
         info.isfavoritevar.set(0)
         info.thread_play=None
@@ -1427,7 +1580,6 @@ class outputdeviceInputThread(threading.Thread):
 def start_outputdeviceInputThread():
     thread_outputdevice=outputdeviceInputThread(outputdevicelist)
     thread_outputdevice.start()
-    #thread_outputdevice.join()
 
 if __name__ == "__main__":
     info.basedirname=os.path.dirname(os.path.abspath("__file__"))

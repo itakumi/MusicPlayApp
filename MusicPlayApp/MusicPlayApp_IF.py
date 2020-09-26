@@ -36,6 +36,7 @@ class AudioInformation:
     renew_flag=False #音程を更新するかどうか
     back_flag,shuffle_flag,directory_repeat_flag,one_repeat_flag=False,False,False,False #再生方法の変更
     next_play_index=0 #GUIから選択したときにインデックスを取得
+    next_play_index_list=[] #GUIから選択したときにインデックスを取得
     onesecframes=None #1秒当たりのフレーム数
     label,playtimeframe=None,None #再生時間のラベル
     targetname_0=None #パス指定のentry
@@ -47,14 +48,15 @@ class AudioInformation:
     scalebar=None #曲の位置を示すスケールバー
     stop_flag=False
     pitch_entry,speed_entry=None,None
-    volume=100
+    volume=100 #音量
     algorithm=1 #0:愚直アルゴリズム、1:Librosa
-    datalist=b''
-    playlist=[]
     favorite_songlist=[]
-    isfavorite=0
-    isfavoritevar=None
+    isfavorite=0 #「お気に入りのみ」モードかどうか
+    isfavoritevar=None 
     algorithmvar=None
+    menu_ROOT=None
+    menu_playlist=None
+    canvas=None
 
 
 class ClassFrame(tk.Frame):
