@@ -18,6 +18,7 @@ import shutil
 from tkinter import messagebox
 from tkinter import filedialog
 from PIL import Image, ImageTk
+import pickle
 
 class AudioInformation:
     outputdeviceindex=-1
@@ -52,12 +53,32 @@ class AudioInformation:
     algorithm=1 #0:愚直アルゴリズム、1:Librosa
     favorite_songlist=[]
     isfavorite=0 #「お気に入りのみ」モードかどうか
-    isfavoritevar=None 
+    isfavoritevar=None
     algorithmvar=None
     menu_ROOT=None
     menu_playlist=None
     canvas=None
-
+    playviews=None
+    directory_playviews=None
+    allplayviews=None
+    rootA=None
+    def __init__(self):
+        self.basedirname=os.path.dirname(os.path.abspath("__file__"))
+        if not os.path.isdir(self.basedirname+'/PickleData'):
+            os.mkdir(self.basedirname+'/PickleData')
+        if os.path.exists(self.basedirname+"/PickleData/MusicPlayApp_allplayviews.pickle"):
+            with open(self.basedirname+'/PickleData/MusicPlayApp_allplayviews.pickle', 'rb') as f:
+                self.allplayviews=pickle.load(f)
+        else:
+            self.allplayviews=dict()
+    def Reload_allplayviews(self):
+        if not os.path.isdir(self.basedirname+'/PickleData'):
+            os.mkdir(self.basedirname+'/PickleData')
+        if os.path.exists(self.basedirname+"/PickleData/MusicPlayApp_allplayviews.pickle"):
+            with open(self.basedirname+'/PickleData/MusicPlayApp_allplayviews.pickle', 'rb') as f:
+                self.allplayviews=pickle.load(f)
+        else:
+            self.allplayviews=dict()
 
 class ClassFrame(tk.Frame):
     def __init__(self, master, bg=None, width=None, height=None):
@@ -134,15 +155,11 @@ def gen_stft(data, Quickness,r12,fs,fn):#短時間フーリエ変換
     data=np.frombuffer(data,dtype="int16")
     data=data.astype(np.float64)
     frq,t,Pxx=scipy.signal.stft(data,fs=int(fn/fs),nperseg=2048)
-    #print(Quickness)
-    #print(r12)
     Pxx=Pxx.real
     Pxx = np.where(np.abs(Pxx) >= 10, Pxx, 0)
     Converted_Pxx=[]
     for i in range(Pxx.shape[0]):
         Converted_Pxx.append(samplerate.resample(Pxx[i],r12/Quickness,'sinc_best'))
-        #Converted_Pxx.append(scipy.signal.resample_poly(Pxx[i],int(10*r12),10))
-    #print(Converted_Pxx.shape)
     _,data=scipy.signal.istft(Converted_Pxx,2048)
     data=data.astype("int16")
     data=data.tobytes()
