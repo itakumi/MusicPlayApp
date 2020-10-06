@@ -39,14 +39,15 @@ class AudioInformation:
     next_play_index=0 #GUIから選択したときにインデックスを取得
     next_play_index_list=[] #GUIから選択したときにインデックスを取得
     onesecframes=None #1秒当たりのフレーム数
-    label,playtimeframe=None,None #再生時間のラベル
+    #label,playtimeframe=None,None #再生時間のラベル
     targetname_0=None #パス指定のentry
     targetname_1=None #フォルダ指定のentry
     targetname_2=None #ファイル指定のentry
-    targetname_0_str=None #パス指定のentry
-    targetname_1_str=None #フォルダ指定のentry
-    targetname_2_str=None #ファイル指定のentry
-    scalebar=None #曲の位置を示すスケールバー
+    targetname_str=None
+    # targetname_0_str=None #パス指定のentry
+    # targetname_1_str=None #フォルダ指定のentry
+    # targetname_2_str=None #ファイル指定のentry
+    #scalebar=None #曲の位置を示すスケールバー
     stop_flag=False
     pitch_entry,speed_entry=None,None
     volume=100 #音量
@@ -55,13 +56,13 @@ class AudioInformation:
     isfavorite=0 #「お気に入りのみ」モードかどうか
     isfavoritevar=None
     algorithmvar=None
-    menu_ROOT=None
-    menu_playlist=None
+    #menu_ROOT=None
+    #menu_playlist=None
     canvas=None
     playviews=None
     directory_playviews=None
     allplayviews=None
-    rootA=None
+    Window=None
     def __init__(self):
         self.basedirname=os.path.dirname(os.path.abspath("__file__"))
         if not os.path.isdir(self.basedirname+'/PickleData'):
@@ -132,9 +133,9 @@ def gen_xfade_honesty(x_pre, x_next, fadetime, sr):#愚直アルゴリズム
         x_next=x_next.astype(np.float64)
         x_pre[-ft_len:]*=w_fo
         x_next[:ft_len]*=w_fi
-        #sin_wave = np.sin(r)/10+1
+        sin_wave = np.sin(r)/50+1
         xfade= np.r_[x_pre,np.zeros(x_next_len)] + np.r_[np.zeros(x_pre_len),x_next]
-        #xfade[int((len(xfade)-ft_len)/2):int((len(xfade)+ft_len)/2)]*=sin_wave
+        xfade[int((len(xfade)-ft_len)/2):int((len(xfade)+ft_len)/2)]*=sin_wave
         #xfade=np.fft.fft(xfade)
         #xfade_abs=np.abs(xfade)
         #xfade_amp=xfade_abs/len(xfade)*2
