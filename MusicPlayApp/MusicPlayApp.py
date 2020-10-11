@@ -16,9 +16,6 @@ def dir_play(PlayListTkinter):#フォルダ再生
     if os.path.isdir(info.targetname_1.get()):
         info.mode=1
         info.targetname_str=info.targetname_1.get()
-        #info.targetname_0_str=None
-        #info.targetname_1_str=info.targetname_1.get()
-        #info.targetname_2_str=None
         PlayListTkinter.quit()
     else:
         messagebox.showinfo('エラー', '指定されたパスが存在しません')
@@ -36,9 +33,6 @@ def filedialog_clicked(PlayListTkinter):#ファイル参照
 def file_play(PlayListTkinter):#ファイル再生
     if os.path.isfile(info.targetname_2.get()):
         info.mode=2
-        # info.targetname_0_str=None
-        # info.targetname_1_str=None
-        # info.targetname_2_str=info.targetname_2.get()
         info.targetname_str=info.targetname_2.get()
         PlayListTkinter.quit()
     else:
@@ -47,9 +41,6 @@ def getTextInput(PlayListTkinter):#パス指定再生
     if info.targetname_0.get()=='./' or os.path.isdir(info.targetname_0.get()):
         info.mode=0
         info.targetname_str=info.targetname_0.get()
-        #info.targetname_0_str=info.targetname_0.get()
-        # info.targetname_1_str=None
-        # info.targetname_2_str=None
         PlayListTkinter.quit()
     elif os.path.isfile(info.targetname_0.get()):
         info.mode=2
@@ -124,15 +115,6 @@ class AudioFile:
             self.p = pyaudio.PyAudio()
             if info.targetname_str != None:
                 info.root.title("音楽再生アプリ("+info.targetname_str+")   「"+os.path.basename(file).split('.', 1)[0]+"」再生中...")
-            # if info.mode==0:
-            #     if info.targetname_0_str != None:
-            #         info.root.title("音楽再生アプリ("+info.targetname_0_str+")   「"+os.path.basename(file).split('.', 1)[0]+"」再生中...")
-            # elif info.mode==1:
-            #     if info.targetname_1_str != None:
-            #         info.root.title("音楽再生アプリ("+info.targetname_1_str+")   「"+os.path.basename(file).split('.', 1)[0]+"」再生中...")
-            # elif info.mode==2:
-            #     if info.targetname_2_str != None:
-            #         info.root.title("音楽再生アプリ("+info.targetname_2_str+")   「"+os.path.basename(file).split('.', 1)[0]+"」再生中...")
             if info.algorithm==0:
                self.stream = self.p.open(
                    format = self.p.get_format_from_width(self.wf.getsampwidth()),
@@ -230,8 +212,6 @@ class AudioFile:
                                         break
                                     time.sleep(0.1)
                                 self.stream.start_stream()
-                            # if info.stop_flag:
-                            #     self.stream.stop_stream()
                             if self.stream.is_active():
                                 self.stream.write(data_pre)
 
@@ -720,7 +700,7 @@ class WinodwClass(tk.Frame):
         super().__init__(master)
         master.title("音楽再生アプリ") #タイトル作成
         #master.resizable(0,0)
-        #master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
+        master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
 
         image = Image.open("img/フラット.png").resize((50, 50))
         self.flatimage=ImageTk.PhotoImage(image)
@@ -927,10 +907,8 @@ class WinodwClass(tk.Frame):
             else:
                 return
         self.master.after(100,self.MusicPlay,directoryname)
-        #root.after(100,pos_renew,root,scaleframe)
     def MusicPlay(self,directoryname):
         if info.thread_play is not None:
-            print("待機")
             self.master.after(100,self.MusicPlay,directoryname)
         if info.thread_play is None :
             info.mode=1
@@ -956,18 +934,6 @@ class WinodwClass(tk.Frame):
         if info.targetname_str in FavoriteDirectory:
             FavoriteDirectory.remove(info.targetname_str)
         FavoriteDirectory.insert(0,info.targetname_str)
-        # if info.mode==0:
-        #     if info.targetname_0_str in FavoriteDirectory:
-        #         FavoriteDirectory.remove(info.targetname_0_str)
-        #     FavoriteDirectory.insert(0,info.targetname_0_str)
-        # elif info.mode==1:
-        #     if info.targetname_1_str in FavoriteDirectory:
-        #         FavoriteDirectory.remove(info.targetname_1_str)
-        #     FavoriteDirectory.insert(0,info.targetname_1_str)
-        # elif info.mode==2:
-        #     if info.targetname_2_str in FavoriteDirectory:
-        #         FavoriteDirectory.remove(info.targetname_2_str)
-        #     FavoriteDirectory.insert(0,info.targetname_2_str)
         with open(info.basedirname+'/PickleData/FavoriteDirectory.pickle','wb') as f:
             pickle.dump(FavoriteDirectory,f)
         self.show_favoritedirectory()
@@ -1052,12 +1018,6 @@ class pos_renew():
             self.scalebar['variable']=val
             self.scalebar['to']=info.duration
         self.root.after(100,self.renewposition)
-# def pos_renew(root):
-#     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
-#         val = DoubleVar(master=root,value=int((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))
-#         info.scalebar['variable']=val
-#         info.scalebar['to']=info.duration
-#     root.after(100,pos_renew,root)
 class WindowThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -1084,14 +1044,6 @@ class getplaytime():
             #info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s" #秒出力
             self.label['text']=str(int(currentminutes))+str(':{:05.2f}'.format(currentseconds))+"/"+str(int(lastminutes))+str(':{:05.2f}'.format(lastseconds)) #分出力
         self.root.after(100,self.renewplaytime)
-
-# def getplaytime(root):
-#     if (info.thread_play is not None) and (info.head is not None) and (info.song is not None):
-#         currentminutes,currentseconds=divmod((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration,60)
-#         lastminutes,lastseconds=divmod(info.duration,60)
-#         #info.label['text']=str('{:.2f}'.format((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))+"s/"+str('{:.2f}'.format(info.duration))+"s" #秒出力
-#         info.label['text']=str(int(currentminutes))+str(':{:05.2f}'.format(currentseconds))+"/"+str(int(lastminutes))+str(':{:05.2f}'.format(lastseconds)) #分出力
-#     root.after(100,getplaytime,root)
 
 class PlayListTkinterThread(threading.Thread):
     def __init__(self):
@@ -1394,7 +1346,6 @@ class PlayThread(threading.Thread):
         print("")
         try:
             if info.targetname_str ==None:
-            #if info.targetname_str ==None and info.targetname_1_str ==None and info.targetname_2_str ==None:
                 print("Playlistの選択")
                 thread_playlisttkinter=PlayListTkinterThread()
                 thread_playlisttkinter.start()
@@ -1402,18 +1353,6 @@ class PlayThread(threading.Thread):
             if info.targetname_str != None and info.mode!=-1:
                 os.chdir(info.targetname_str)
                 info.root.title("音楽再生アプリ("+info.targetname_str+")")
-            # if info.mode==0:
-            #     if info.targetname_0_str != None:
-            #         os.chdir(info.targetname_0_str)
-            #         info.root.title("音楽再生アプリ("+info.targetname_0_str+")")
-            # elif info.mode==1:
-            #     if info.targetname_1_str != None:
-            #         os.chdir(info.targetname_1_str)
-            #         info.root.title("音楽再生アプリ("+info.targetname_1_str+")")
-            # elif info.mode==2:
-            #     if info.targetname_2_str != None:
-            #         playfile=info.targetname_2_str
-            #         info.root.title("音楽再生アプリ("+info.targetname_2_str+")")
             else:
                 print("×が押されました")
                 info.thread_play=None
@@ -1763,9 +1702,6 @@ class PlayThread(threading.Thread):
         info.targetname_1=None #フォルダ指定のentry
         info.targetname_2=None #ファイル指定のentry
         info.targetname_str=None #パス指定のentry
-        # info.targetname_0_str=None #パス指定のentry
-        # info.targetname_1_str=None #フォルダ指定のentry
-        # info.targetname_2_str=None #ファイル指定のentry
 def start_windowthread():
     thread_window=WindowThread()
     thread_window.start()

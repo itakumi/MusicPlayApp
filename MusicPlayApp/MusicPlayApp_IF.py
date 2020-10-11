@@ -39,15 +39,10 @@ class AudioInformation:
     next_play_index=0 #GUIから選択したときにインデックスを取得
     next_play_index_list=[] #GUIから選択したときにインデックスを取得
     onesecframes=None #1秒当たりのフレーム数
-    #label,playtimeframe=None,None #再生時間のラベル
     targetname_0=None #パス指定のentry
     targetname_1=None #フォルダ指定のentry
     targetname_2=None #ファイル指定のentry
     targetname_str=None
-    # targetname_0_str=None #パス指定のentry
-    # targetname_1_str=None #フォルダ指定のentry
-    # targetname_2_str=None #ファイル指定のentry
-    #scalebar=None #曲の位置を示すスケールバー
     stop_flag=False
     pitch_entry,speed_entry=None,None
     volume=100 #音量
@@ -56,8 +51,6 @@ class AudioInformation:
     isfavorite=0 #「お気に入りのみ」モードかどうか
     isfavoritevar=None
     algorithmvar=None
-    #menu_ROOT=None
-    #menu_playlist=None
     canvas=None
     playviews=None
     directory_playviews=None
