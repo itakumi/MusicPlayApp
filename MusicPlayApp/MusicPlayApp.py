@@ -1350,6 +1350,10 @@ class PlayThread(threading.Thread):
                 thread_playlisttkinter=PlayListTkinterThread()
                 thread_playlisttkinter.start()
                 thread_playlisttkinter.join()
+            if not os.path.exists(info.targetname_str):
+                messagebox.showinfo('エラー', 'パスが存在しません。')
+                info.thread_play=None
+                return
             if info.targetname_str != None and info.mode!=-1:
                 os.chdir(info.targetname_str)
                 info.root.title("音楽再生アプリ("+info.targetname_str+")")
