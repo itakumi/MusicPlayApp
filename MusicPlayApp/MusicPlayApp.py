@@ -80,7 +80,6 @@ def KeySpeedRead(KeySpeedInput,KeyInput,SpeedInput):#最初のウィンドウに
         messagebox.showinfo('エラー', 'KeyとSpeedはfloat型でお願いします')
 def OutputDeviceRead(event=None,outputdeviceInputClass=None,var=None):
     info.outputdeviceindex=var.get()
-    print("index=",info.outputdeviceindex)
     outputdeviceInputClass.destroy()
 class PSThread(threading.Thread):
     data=None
