@@ -19,6 +19,7 @@ def dir_play(PlayListTkinter):#フォルダ再生
         PlayListTkinter.quit()
     else:
         messagebox.showinfo('エラー', '指定されたパスが存在しません')
+
 def filedialog_clicked(PlayListTkinter):#ファイル参照
     PlayListTkinter.attributes("-topmost", False)
     fTyp = [("", "*")]
@@ -77,8 +78,9 @@ def KeySpeedRead(KeySpeedInput,KeyInput,SpeedInput):#最初のウィンドウに
             messagebox.showinfo('エラー', 'Keyは-12~12でお願いします')
     else:
         messagebox.showinfo('エラー', 'KeyとSpeedはfloat型でお願いします')
-def OutputDeviceRead(outputdeviceInputClass,var):
+def OutputDeviceRead(event=None,outputdeviceInputClass=None,var=None):
     info.outputdeviceindex=var.get()
+    print("index=",info.outputdeviceindex)
     outputdeviceInputClass.destroy()
 class PSThread(threading.Thread):
     data=None
@@ -208,7 +210,7 @@ class AudioFile:
                             if info.stop_flag:
                                 self.stream.stop_stream()
                                 while self.stream.is_active()==False:
-                                    if info.quit:
+                                    if info.quit or info.stop_flag==False:
                                         break
                                     time.sleep(0.1)
                                 self.stream.start_stream()
@@ -264,8 +266,9 @@ class AudioFile:
                                     if info.stop_flag:
                                         self.stream.stop_stream()
                                         while self.stream.is_active()==False:
-                                            if info.quit:
+                                            if info.quit or info.stop_flag==False:
                                                 break
+                                            print("停止大気中")
                                             time.sleep(0.1)
                                         self.stream.start_stream()
                                     if info.stop_flag==False:
@@ -338,53 +341,18 @@ def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_butt
             except wave.Error:
                 pass
             info.renew_flag=True
-    elif kb==b'\xe0':
-        kb=msvcrt.getch()
-        if kb==b'K':#Left
-            if info.Quickness<=0.1:
-                messagebox.showinfo('エラー', 'これ以上は速度を落とせません')
-            else:
-                info.Quickness-=0.1
-                info.Quickness=round(info.Quickness,3)
-                info.speed_entry.delete(0,tkinter.END)
-                info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
-                if info.thread_play is not None:
-                    info.renew_flag=True
-                print("Speed=",round(info.Quickness,3))
-        elif kb==b'H':#Up
-            info.Key+=0.1
-            info.Key=round(info.Key,2)
-            info.r12=r**np.float(info.Key)
-            info.pitch_entry.delete(0,tkinter.END)
-            info.pitch_entry.insert(tkinter.END,round(info.Key,2))
-            info.renew_flag=True
-            print("Key=",round(info.Key,2))
-        elif kb==b'M':#Right
-            info.Quickness+=0.1
-            info.Quickness=round(info.Quickness,3)
-            info.speed_entry.delete(0,tkinter.END)
-            info.speed_entry.insert(tkinter.END,round(info.Quickness,3))
-            if info.thread_play is not None:
-                info.renew_flag=True
-            print("Speed=",round(info.Quickness,3))
-        elif kb==b'P':#Down
-            info.Key-=0.1
-            info.Key=round(info.Key,2)
-            info.r12=r**np.float(info.Key)
-            info.pitch_entry.delete(0,tkinter.END)
-            info.pitch_entry.insert(tkinter.END,round(info.Key,2))
-            info.renew_flag=True
-            print("Key=",round(info.Key,2))
     elif kb.decode()=='\r':
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
         else:
             if info.song.stream.is_active():
                 info.stop_flag=True
-                info.song.stream.stop_stream()
+                print("停止します")
+                # info.song.stream.stop_stream()
             else:
                 info.stop_flag=False
-                info.song.stream.start_stream()
+                print("再開します")
+                # info.song.stream.start_stream()
             info.renew_flag=True
             time.sleep(0.2)
     elif kb.decode()=='n':
@@ -762,6 +730,7 @@ class WinodwClass(tk.Frame):
         image = Image.open("img/EXIT.png").resize((50, 50))
         self.exitImage=ImageTk.PhotoImage(image)
         tk.Button(master, text="終了", fg = "deep pink",image=self.exitImage,command=partial(backgroundprocess,b'q','',windowroot=master),font=("",20)).grid(row=6, column=5, padx=10, pady=10)
+        master.bind("<Escape>",partial(backgroundprocess,b'q','',windowroot=master))
 
         image = Image.open("img/再生ボタン.png").resize((50, 50))
         self.PlayImage=ImageTk.PhotoImage(image)
@@ -840,7 +809,24 @@ class WinodwClass(tk.Frame):
         volume_label_100=tk.Label(volumescaleframe, text="100")
         volume_label_100.pack(side=tk.RIGHT)
         volumescaleframe.grid(row=0,column=3,columnspan=2,sticky=(E))
+        master.bind("<Control-Shift-O>",self.shortcut_dirplay)
+        master.bind("<Control-o>",self.shortcut_fileplay)
         self.menu_create()
+    def shortcut_dirplay(self,event=None):
+        iDirPath = filedialog.askdirectory(initialdir = info.basedirname+"/../")
+        if iDirPath !='':
+            if os.path.isdir(iDirPath):
+                self.quitandplay(iDirPath)
+            else:
+                messagebox.showinfo('エラー', '指定されたパスが存在しません')
+    def shortcut_fileplay(self,event=None):
+        fTyp = [("", "*")]
+        iFilePath = filedialog.askopenfilename(filetype = fTyp, initialdir = info.basedirname+"/../")
+        if iFilePath !='':
+            if os.path.isfile(iFilePath):
+                self.quitandplay(iFilePath)
+            else:
+                messagebox.showinfo('エラー', '指定されたパスが存在しません')
     def volumeset(self,dummy,volume):
         info.volume=volume
         info.renew_flag=True
@@ -911,7 +897,10 @@ class WinodwClass(tk.Frame):
         if info.thread_play is not None:
             self.master.after(100,self.MusicPlay,directoryname)
         if info.thread_play is None :
-            info.mode=1
+            if os.path.isdir(directoryname):
+                info.mode=1
+            elif os.path.isfile(directoryname):
+                info.mode=2
             info.targetname_str=directoryname
             info.song=None
             info.thread_play=PlayThread()
@@ -1350,12 +1339,18 @@ class PlayThread(threading.Thread):
                 thread_playlisttkinter=PlayListTkinterThread()
                 thread_playlisttkinter.start()
                 thread_playlisttkinter.join()
+            if info.targetname_str==None:
+                info.thread_play=None
+                return
             if not os.path.exists(info.targetname_str):
                 messagebox.showinfo('エラー', 'パスが存在しません。')
                 info.thread_play=None
                 return
             if info.targetname_str != None and info.mode!=-1:
-                os.chdir(info.targetname_str)
+                if info.mode==2:
+                    playfile=info.targetname_str
+                else:
+                    os.chdir(info.targetname_str)
                 info.root.title("音楽再生アプリ("+info.targetname_str+")")
             else:
                 print("×が押されました")
@@ -1470,6 +1465,7 @@ class PlayThread(threading.Thread):
                             print(os.path.split(f)[1],"を",os.path.splitext(f)[0],".wav","へ変換")
                             os.system("ffmpeg.exe -i "+ os.path.split(f)[1].replace(' ','') + " " +  playlistdirname+"/" + os.path.splitext(f)[0].replace(' ','') + ".wav")
                 if os.getcwd()!= info.basedirname:
+                    time.sleep(1)
                     os.remove("./ffmpeg.exe")
                     os.remove("./ffplay.exe")
                     os.remove("./ffprobe.exe")
@@ -1765,8 +1761,10 @@ class outputdeviceInputClass(tk.Frame):
         var.set(outputdevicelist[0]['index'])
         for i in range(len(outputdevicelist)):
             tk.Radiobutton(master, value=outputdevicelist[i]['index'], variable=var, text=outputdevicelist[i]['name']).pack(side='top')
-        DeviceReadButton=tk.Button(master, height=1, width=10, text="OK", command = lambda:OutputDeviceRead(master,var))
+        DeviceReadButton=tk.Button(master, height=1, width=10, text="OK", command = lambda:OutputDeviceRead(outputdeviceInputClass=master,va=var))
         DeviceReadButton.pack(side='top')
+        master.bind("<Return>",partial(OutputDeviceRead,outputdeviceInputClass=master,var=var))
+
 class outputdeviceInputThread(threading.Thread):
     def __init__(self,outputdevicelist):
         threading.Thread.__init__(self)
