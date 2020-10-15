@@ -78,9 +78,11 @@ def KeySpeedRead(KeySpeedInput,KeyInput,SpeedInput):#最初のウィンドウに
             messagebox.showinfo('エラー', 'Keyは-12~12でお願いします')
     else:
         messagebox.showinfo('エラー', 'KeyとSpeedはfloat型でお願いします')
-def OutputDeviceRead(event=None,outputdeviceInputClass=None,var=None):
-    info.outputdeviceindex=var.get()
-    outputdeviceInputClass.destroy()
+def OutputDeviceRead(event=None,outputdeviceInputClass=None):
+    if info.thread_play is not None:
+        info.song.renew()
+    if outputdeviceInputClass is not None:
+        outputdeviceInputClass.destroy()
 class PSThread(threading.Thread):
     data=None
     def __init__(self,data_pre):
@@ -122,7 +124,7 @@ class AudioFile:
                    channels = self.wf.getnchannels(),
                    frames_per_buffer = self.buffer,
                    rate = int(self.wf.getframerate()*info.r12),
-                   output_device_index=info.outputdeviceindex,
+                   output_device_index=info.outputdeviceindex.get(),
                    input=False,
                    output = True)
             elif info.algorithm==1:
@@ -131,7 +133,7 @@ class AudioFile:
                    channels = self.wf.getnchannels(),
                    frames_per_buffer = self.buffer,
                    rate = int(self.wf.getframerate()),
-                   output_device_index=info.outputdeviceindex,
+                   output_device_index=info.outputdeviceindex.get(),
                    input=False,
                    output = True)
 
@@ -164,135 +166,130 @@ class AudioFile:
                 if info.renew_flag:
                     self.renew()
                     info.renew_flag=False
-                if msvcrt.kbhit():
-                    backgroundprocess(msvcrt.getch(),'')
-                else:
-                    if self.stream.is_active():
-                        if info.algorithm==0:
-                            if data == '':
-                                data_pre = self.wf.readframes(int(self.chunk))
-                                time.sleep(0.1)
-                            elif data != '':
-                                data_pre=data
-                                data=''
-                            crossfadelength=2048
-                            if info.Quickness < 1 or info.r12 >1:
-                                if self.wf.tell()==info.last:
-                                    if self.stream.is_active():
-                                        self.stream.write(data_pre)
-                                    data_pre=''
-                                    continue
-                                else:
-                                    if self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength >=info.head:
-                                        self.wf.setpos(self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength)
-                                    data = self.wf.readframes(int(self.chunk)+crossfadelength)
-                            elif info.Quickness > 1 or info.r12 < 1:
-                                if self.wf.tell()==info.last:
-                                    if self.stream.is_active():
-                                        self.stream.write(data_pre)
-                                    data_pre=''
-                                    continue
-                                else:
-                                    if self.wf.tell()-crossfadelength >= info.head:
-                                        self.wf.setpos(self.wf.tell()-crossfadelength)
-                                    dummy = self.wf.readframes(int(self.chunk*((info.Quickness/info.r12)-1)))
-                                    data = self.wf.readframes(int(self.chunk)+crossfadelength)
-                            else:
-                                data = self.wf.readframes(int(self.chunk)+crossfadelength)
-                            if (info.Quickness != 1 or info.r12 !=1):
-                                data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength*(len(data)/(self.chunk+crossfadelength))/2,int(self.wf.getframerate()*info.r12))
-                            data_pre=np.frombuffer(data_pre,dtype="int16")
-                            data_pre=data_pre.astype(np.float64)
-                            data_pre=data_pre*round(float(info.volume),2)/100
-                            data_pre=data_pre.astype(np.int16)
-                            data_pre=data_pre.tobytes()
-                            if info.stop_flag:
-                                self.stream.stop_stream()
-                                while self.stream.is_active()==False:
-                                    if info.quit or info.stop_flag==False:
-                                        break
-                                    time.sleep(0.1)
-                                self.stream.start_stream()
-                            if self.stream.is_active():
-                                self.stream.write(data_pre)
-
-                        if info.algorithm==1:
-                            if self.wf.tell()==info.last:
-                                data_pre=''
-                                continue
-                            currentpos=self.wf.tell()
-                            try:
-                                if data !='':
-                                    dummy = self.wf.readframes(int(self.chunk))
-                                    nextpos=self.wf.tell()
-                                    data=self.wf.readframes(int(self.chunk))
-                                    self.wf.setpos(currentpos)
-                                else:
-                                    data_pre=self.wf.readframes(int(self.chunk))
-                                    nextpos=self.wf.tell()
-                                    data = self.wf.readframes(int(self.chunk))
-                                    self.wf.setpos(currentpos)
-                                    thread_PS=PSThread(data_pre)
-                                    thread_PS.start()
-                                    thread_PS.join()
-                                    data_pre=thread_PS.getdata()
-                            except Runtimeerror:
-                                print("Runtimeerror出ましたが続けます")
-                            thread_PS=PSThread(data)
-                            thread_PS.start()
-                            size=1024*2
-                            datakind=int(len(data_pre)/(1024*128))
-                            if datakind==0:
-                                datakind=int(len(data)/(1024*128))
-                            if datakind==0:
-                                data_pre=''
-                                continue
-                            for i in range(int(len(data_pre)/(size*datakind))+1):
-                                if info.quit:
-                                    break
-                                if msvcrt.kbhit():
-                                    backgroundprocess(msvcrt.getch(),'')
-                                if info.renew_flag:
-                                    self.renew()
-                                    info.renew_flag=False
-                                    try:
-                                        self.wf.setpos(self.wf.tell())
-                                    except wave.Error:
-                                        print("waveerror出たけど続けます")
-                                        data_pre=''
-                                        continue
-                                    data=''#多分ここが飛んでる原因
-                                    if info.stop_flag:
-                                        self.stream.stop_stream()
-                                        while self.stream.is_active()==False:
-                                            if info.quit or info.stop_flag==False:
-                                                break
-                                            print("停止大気中")
-                                            time.sleep(0.1)
-                                        self.stream.start_stream()
-                                    if info.stop_flag==False:
-                                        break
-                                if i<int(len(data_pre)/(size*datakind)):
-                                    if self.stream.is_active():
-                                        if info.stop_flag:
-                                            thread_PS.join()
-                                            self.stream.stop_stream()
-                                        if self.stream.is_active():
-                                            dummy=self.wf.readframes(size)
-                                            self.stream.write(data_pre[(size*datakind)*i:(size*datakind)*(i+1)])
-                                else:
-                                    if info.stop_flag:
-                                        self.stream.stop_stream()
-                                    if self.stream.is_active():
-                                        self.wf.setpos(nextpos)
-                                        self.stream.write(data_pre[(size*datakind)*i:])
-                                    thread_PS.join()
-                                    data_pre=thread_PS.getdata()
-                    else:
-                        if info.stop_flag ==False:
-                            self.stream.start_stream()
-                        else:
+                if self.stream.is_active():
+                    if info.algorithm==0:
+                        if data == '':
+                            data_pre = self.wf.readframes(int(self.chunk))
                             time.sleep(0.1)
+                        elif data != '':
+                            data_pre=data
+                            data=''
+                        crossfadelength=2048
+                        if info.Quickness < 1 or info.r12 >1:
+                            if self.wf.tell()==info.last:
+                                if self.stream.is_active():
+                                    self.stream.write(data_pre)
+                                data_pre=''
+                                continue
+                            else:
+                                if self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength >=info.head:
+                                    self.wf.setpos(self.wf.tell()-int(self.chunk*(1-(info.Quickness/info.r12)))-crossfadelength)
+                                data = self.wf.readframes(int(self.chunk)+crossfadelength)
+                        elif info.Quickness > 1 or info.r12 < 1:
+                            if self.wf.tell()==info.last:
+                                if self.stream.is_active():
+                                    self.stream.write(data_pre)
+                                data_pre=''
+                                continue
+                            else:
+                                if self.wf.tell()-crossfadelength >= info.head:
+                                    self.wf.setpos(self.wf.tell()-crossfadelength)
+                                dummy = self.wf.readframes(int(self.chunk*((info.Quickness/info.r12)-1)))
+                                data = self.wf.readframes(int(self.chunk)+crossfadelength)
+                        else:
+                            data = self.wf.readframes(int(self.chunk)+crossfadelength)
+                        if (info.Quickness != 1 or info.r12 !=1):
+                            data_pre,data = gen_xfade_honesty(data_pre,data,crossfadelength*(len(data)/(self.chunk+crossfadelength))/2,int(self.wf.getframerate()*info.r12))
+                        data_pre=np.frombuffer(data_pre,dtype="int16")
+                        data_pre=data_pre.astype(np.float64)
+                        data_pre=data_pre*round(float(info.volume),2)/100
+                        data_pre=data_pre.astype(np.int16)
+                        data_pre=data_pre.tobytes()
+                        if info.stop_flag:
+                            self.stream.stop_stream()
+                            while self.stream.is_active()==False:
+                                if info.quit or info.stop_flag==False:
+                                    break
+                                time.sleep(0.1)
+                            self.stream.start_stream()
+                        if self.stream.is_active():
+                            self.stream.write(data_pre)
+
+                    if info.algorithm==1:
+                        if self.wf.tell()==info.last:
+                            data_pre=''
+                            continue
+                        currentpos=self.wf.tell()
+                        try:
+                            if data !='':
+                                dummy = self.wf.readframes(int(self.chunk))
+                                nextpos=self.wf.tell()
+                                data=self.wf.readframes(int(self.chunk))
+                                self.wf.setpos(currentpos)
+                            else:
+                                data_pre=self.wf.readframes(int(self.chunk))
+                                nextpos=self.wf.tell()
+                                data = self.wf.readframes(int(self.chunk))
+                                self.wf.setpos(currentpos)
+                                thread_PS=PSThread(data_pre)
+                                thread_PS.start()
+                                thread_PS.join()
+                                data_pre=thread_PS.getdata()
+                        except Runtimeerror:
+                            print("Runtimeerror出ましたが続けます")
+                        thread_PS=PSThread(data)
+                        thread_PS.start()
+                        size=1024*2
+                        datakind=int(len(data_pre)/(1024*128))
+                        if datakind==0:
+                            datakind=int(len(data)/(1024*128))
+                        if datakind==0:
+                            data_pre=''
+                            continue
+                        for i in range(int(len(data_pre)/(size*datakind))+1):
+                            if info.quit:
+                                break
+                            if info.renew_flag:
+                                self.renew()
+                                info.renew_flag=False
+                                try:
+                                    self.wf.setpos(self.wf.tell())
+                                except wave.Error:
+                                    print("waveerror出たけど続けます")
+                                    data_pre=''
+                                    continue
+                                data=''#多分ここが飛んでる原因
+                                if info.stop_flag:
+                                    self.stream.stop_stream()
+                                    while self.stream.is_active()==False:
+                                        if info.quit or info.stop_flag==False:
+                                            break
+                                        print("停止大気中")
+                                        time.sleep(0.1)
+                                    self.stream.start_stream()
+                                if info.stop_flag==False:
+                                    break
+                            if i<int(len(data_pre)/(size*datakind)):
+                                if self.stream.is_active():
+                                    if info.stop_flag:
+                                        thread_PS.join()
+                                        self.stream.stop_stream()
+                                    if self.stream.is_active():
+                                        dummy=self.wf.readframes(size)
+                                        self.stream.write(data_pre[(size*datakind)*i:(size*datakind)*(i+1)])
+                            else:
+                                if info.stop_flag:
+                                    self.stream.stop_stream()
+                                if self.stream.is_active():
+                                    self.wf.setpos(nextpos)
+                                    self.stream.write(data_pre[(size*datakind)*i:])
+                                thread_PS.join()
+                                data_pre=thread_PS.getdata()
+                else:
+                    if info.stop_flag ==False:
+                        self.stream.start_stream()
+                    else:
+                        time.sleep(0.1)
             print("done.")
             self.stream.close()
             self.p.terminate()
@@ -305,7 +302,7 @@ class AudioFile:
                         channels = self.wf.getnchannels(),
                         frames_per_buffer = self.buffer,
                         rate = int(self.wf.getframerate()*info.r12),
-                        output_device_index=info.outputdeviceindex,
+                        output_device_index=info.outputdeviceindex.get(),
                         input=False,
                         output = True)
                 elif info.algorithm==1:
@@ -314,11 +311,11 @@ class AudioFile:
                         channels = self.wf.getnchannels(),
                         frames_per_buffer = self.buffer,
                         rate = int(self.wf.getframerate()),
-                        output_device_index=info.outputdeviceindex,
+                        output_device_index=info.outputdeviceindex.get(),
                         input=False,
                         output = True)
 
-def backgroundprocess(kb,scaleint=None,shuffle_button=None,directory_repeat_button=None,one_repeat_button=None,windowroot=None):
+def backgroundprocess(event=None,kb=None,scaleint=None,shuffle_button=None,directory_repeat_button=None,one_repeat_button=None,windowroot=None):
     if isinstance(kb,int):#playlistの曲のボタンが押されたとき
         if info.isfavorite==0:
             info.next_play_index=kb
@@ -640,9 +637,9 @@ def setisfavorite(isfavorite_num,isfavoritevar=None):
                                     info.Window.menu_playlist.entryconfigure(id,label=str(int(id)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
                                     id+=1
                             if len(info.next_play_index_list)!=0:
-                                info.Window.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                                info.Window.menu_ROOT.entryconfigure(3, label="次に再生(N)("+str(len(info.next_play_index_list))+")")#更新
                             else:
-                                info.Window.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+                                info.Window.menu_ROOT.entryconfigure(3, label='次に再生(N)')#更新
                         else:
                             info.isfavorite=0
                             isfavoritevar.set(0)
@@ -671,10 +668,10 @@ class WinodwClass(tk.Frame):
 
         image = Image.open("img/フラット.png").resize((50, 50))
         self.flatimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="pitch-1", fg = "red", image=self.flatimage,command=partial(backgroundprocess,b'down_much',''),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
+        tk.Button(master, text="pitch-1", fg = "red", image=self.flatimage,command=partial(backgroundprocess,kb=b'down_much'),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
         image = Image.open("img/シャープ.png").resize((50, 50))
         self.sharpimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="pitch+1", fg = "red", image=self.sharpimage,command=partial(backgroundprocess,b'up_much',''),font=("",20)).grid(row=0, column=2, padx=10, pady=10)
+        tk.Button(master, text="pitch+1", fg = "red", image=self.sharpimage,command=partial(backgroundprocess,kb=b'up_much'),font=("",20)).grid(row=0, column=2, padx=10, pady=10)
 
         entryframe = ttk.Frame(master, padding=10)
         entryframe.grid(row=1, column=1,rowspan=3,columnspan=3)
@@ -684,19 +681,19 @@ class WinodwClass(tk.Frame):
         info.pitch_entry = ttk.Entry(pitchframe,width=10)
         info.pitch_entry.insert(tk.END, info.Key) # 最初から文字を入れておく
         info.pitch_entry.pack(side=LEFT)
-        pitchRead=ttk.Button(pitchframe, width=10, text="変更",command=partial(backgroundprocess,b'changekey',''))
+        pitchRead=ttk.Button(pitchframe, width=10, text="変更",command=partial(backgroundprocess,kb=b'changekey'))
         pitchRead.pack(side=LEFT)
-        tk.Button(pitchframe, text="reset", fg = "red",command=partial(backgroundprocess,b'e','')).pack(side=LEFT)
+        tk.Button(pitchframe, text="reset", fg = "red",command=partial(backgroundprocess,kb=b'e')).pack(side=LEFT)
         pitchframe.pack(side=TOP)
 
         ttk.Label(entryframe, text='--------------------------------------------').pack(side=TOP)
 
         image = Image.open("img/速度プラス10パー.png").resize((50, 50))
         self.fastimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="speed+10%", fg = "blue", image=self.fastimage,command=partial(backgroundprocess,b'right',''),font=("",20)).grid(row=2, column=4, padx=10, pady=10)
+        tk.Button(master, text="speed+10%", fg = "blue", image=self.fastimage,command=partial(backgroundprocess,kb=b'right'),font=("",20)).grid(row=2, column=4, padx=10, pady=10)
         image = Image.open("img/速度マイナス10パー.png").resize((50, 50))
         self.slowimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="speed-10%", fg = "blue", image=self.slowimage,command=partial(backgroundprocess,b'left',''),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
+        tk.Button(master, text="speed-10%", fg = "blue", image=self.slowimage,command=partial(backgroundprocess,kb=b'left'),font=("",20)).grid(row=2, column=0, padx=10, pady=10)
 
         speedframe = ttk.Frame(entryframe, padding=5)
         IDirLabel = ttk.Label(speedframe, text="Speed=")
@@ -704,32 +701,44 @@ class WinodwClass(tk.Frame):
         info.speed_entry = ttk.Entry(speedframe,width=10)
         info.speed_entry.insert(tk.END, info.Quickness) # 最初から文字を入れておく
         info.speed_entry.pack(side=LEFT)
-        speedRead=ttk.Button(speedframe, width=10, text="変更",command=partial(backgroundprocess,b'changespeed',''))
+        speedRead=ttk.Button(speedframe, width=10, text="変更",command=partial(backgroundprocess,kb=b'changespeed'))
         speedRead.pack(side=LEFT)
-        tk.Button(speedframe, text="reset", fg = "blue",command=partial(backgroundprocess,b'r','')).pack(side=LEFT)
+        tk.Button(speedframe, text="reset", fg = "blue",command=partial(backgroundprocess,kb=b'r')).pack(side=LEFT)
         speedframe.pack(side=TOP)
 
+        master.bind("<Shift-Left>",partial(backgroundprocess,kb=b'left'))
+        master.bind("<Shift-Right>",partial(backgroundprocess,kb=b'right'))
+        master.bind("<Shift-Up>",partial(backgroundprocess,kb=b'up_much'))
+        master.bind("<Shift-Down>",partial(backgroundprocess,kb=b'down_much'))
 
         image = Image.open("img/10秒巻き戻し.png").resize((50, 50))
         self.back10secimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="back_10sec", fg = "green", image=self.back10secimage,command=partial(backgroundprocess,b's',''),font=("",20)).grid(row=5, column=1, padx=10, pady=10)
+        tk.Button(master, text="back_10sec", fg = "green", image=self.back10secimage,command=partial(backgroundprocess,kb=b's'),font=("",20)).grid(row=5, column=1, padx=10, pady=10)
         image = Image.open("img/5秒巻き戻し.png").resize((50, 50))
         self.back5secimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="back_5sec", fg = "green", image=self.back5secimage,command=partial(backgroundprocess,b'd',''),font=("",20)).grid(row=5, column=2, padx=10, pady=10)
+        tk.Button(master, text="back_5sec", fg = "green", image=self.back5secimage,command=partial(backgroundprocess,kb=b'd'),font=("",20)).grid(row=5, column=2, padx=10, pady=10)
         image = Image.open("img/5秒早送り.png").resize((50, 50))
         self.forward5secimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="forward_5sec", fg = "green", image=self.forward5secimage,command=partial(backgroundprocess,b'f',''),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
+        tk.Button(master, text="forward_5sec", fg = "green", image=self.forward5secimage,command=partial(backgroundprocess,kb=b'f'),font=("",20)).grid(row=5, column=3, padx=10, pady=10)
         image = Image.open("img/10秒早送り.png").resize((50, 50))
         self.forward10secimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="forward_10sec", fg = "green", image=self.forward10secimage,command=partial(backgroundprocess,b'g',''),font=("",20)).grid(row=5, column=4, padx=10, pady=10)
+        tk.Button(master, text="forward_10sec", fg = "green", image=self.forward10secimage,command=partial(backgroundprocess,kb=b'g'),font=("",20)).grid(row=5, column=4, padx=10, pady=10)
+
+        master.bind("<Left>",partial(backgroundprocess,kb=b'd'))
+        master.bind("<Right>",partial(backgroundprocess,kb=b'f'))
+        master.bind("<Control-Left>",partial(backgroundprocess,kb=b's'))
+        master.bind("<Control-Right>",partial(backgroundprocess,kb=b'g'))
 
         image = Image.open("img/リスタート.png").resize((50, 50))
         self.RestartImage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="restart", fg = "deep pink",image=self.RestartImage,command=partial(backgroundprocess,b'p',''),font=("",20)).grid(row=6, column=4, padx=10, pady=10)
+        tk.Button(master, text="restart", fg = "deep pink",image=self.RestartImage,command=partial(backgroundprocess,kb=b'p'),font=("",20)).grid(row=6, column=4, padx=10, pady=10)
+        master.bind("<Key-space>",partial(backgroundprocess,kb=b'p'))
+        #master.bind("<Key-p>",partial(backgroundprocess,kb=b'p'))
+
         image = Image.open("img/EXIT.png").resize((50, 50))
         self.exitImage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="終了", fg = "deep pink",image=self.exitImage,command=partial(backgroundprocess,b'q','',windowroot=master),font=("",20)).grid(row=6, column=5, padx=10, pady=10)
-        master.bind("<Escape>",partial(backgroundprocess,b'q','',windowroot=master))
+        tk.Button(master, text="終了", fg = "deep pink",image=self.exitImage,command=partial(backgroundprocess,kb=b'q',windowroot=master),font=("",20)).grid(row=6, column=5, padx=10, pady=10)
+        master.bind("<Escape>",partial(backgroundprocess,kb=b'q',windowroot=master))
 
         image = Image.open("img/再生ボタン.png").resize((50, 50))
         self.PlayImage=ImageTk.PhotoImage(image)
@@ -742,14 +751,15 @@ class WinodwClass(tk.Frame):
         playtime.renewplaytime()
         image = Image.open("img/一時停止再開ボタン.png").resize((50, 50))
         self.stop_and_startimage=ImageTk.PhotoImage(image)
-        tk.Button(master, text="一時停止/再開", fg = "navy", image=self.stop_and_startimage,command=partial(backgroundprocess,b'\r',''),font=("",20)).grid(row=6, column=3, padx=10, pady=10)
+        tk.Button(master, text="一時停止/再開", fg = "navy", image=self.stop_and_startimage,command=partial(backgroundprocess,kb=b'\r'),font=("",20)).grid(row=6, column=3, padx=10, pady=10)
+        master.bind("<Return>",partial(backgroundprocess,kb=b'\r'))
 
         image = Image.open("img/左矢印.png").resize((50, 50))
         self.leftarrowimage=ImageTk.PhotoImage(image)
-        backbutton=tk.Button(master, text="back", fg = "orange", image=self.leftarrowimage,command=partial(backgroundprocess,b'b',''),font=("",20))
+        backbutton=tk.Button(master, text="back", fg = "orange", image=self.leftarrowimage,command=partial(backgroundprocess,kb=b'b'),font=("",20))
         image = Image.open("img/右矢印.png").resize((50, 50))
         self.rightarrowimage=ImageTk.PhotoImage(image)
-        nextbutton=tk.Button(master, text="next", fg = "orange", image=self.rightarrowimage,command=partial(backgroundprocess,b'n',''),font=("",20))
+        nextbutton=tk.Button(master, text="next", fg = "orange", image=self.rightarrowimage,command=partial(backgroundprocess,kb=b'n'),font=("",20))
 
 
         image = Image.open("img/シャッフル再生.png").resize((50, 50))
@@ -762,16 +772,18 @@ class WinodwClass(tk.Frame):
         self.one_repeat_Image=ImageTk.PhotoImage(image)
         one_repeat_button=tk.Button(master, text="1曲リピート", fg = "purple", image=self.one_repeat_Image,font=("",20))
 
-        backbutton['command']=partial(backgroundprocess,b'b','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        backbutton['command']=partial(backgroundprocess,kb=b'b',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
         backbutton.grid(row=5, column=0, padx=10, pady=10)
-        nextbutton['command']=partial(backgroundprocess,b'n','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        nextbutton['command']=partial(backgroundprocess,kb=b'n',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
         nextbutton.grid(row=5, column=5, padx=10, pady=10)
-        shuffle_button['command']=partial(backgroundprocess,b'z','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        shuffle_button['command']=partial(backgroundprocess,kb=b'z',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
         shuffle_button.grid(row=0, column=5, padx=10, pady=10)
-        directory_repeat_button['command']=partial(backgroundprocess,b'x','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        directory_repeat_button['command']=partial(backgroundprocess,kb=b'x',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
         directory_repeat_button.grid(row=2, column=5, padx=10, pady=10)
-        one_repeat_button['command']=partial(backgroundprocess,b'c','',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
+        one_repeat_button['command']=partial(backgroundprocess,kb=b'c',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button)
         one_repeat_button.grid(row=4, column=5, padx=10, pady=10)
+        master.bind("<Control-Shift-Left>",partial(backgroundprocess,kb=b'b',shuffle_button=shuffle_button,directory_repeat_button=directory_repeat_button,one_repeat_button=one_repeat_button))
+        master.bind("<Control-Shift-Right>",partial(backgroundprocess,kb=b'n'))
 
         scaleframe = ttk.Frame(master,padding=10)
         first_label=tk.Label(scaleframe, text="first",font=("",20))
@@ -784,7 +796,7 @@ class WinodwClass(tk.Frame):
             length=700,
             from_=0,
             to=info.duration,
-            command=partial(backgroundprocess,val.get()))
+            command=partial(backgroundprocess,kb=val.get()))
         position=pos_renew(master,self.scalebar)
         position.renewposition()
         self.scalebar.pack(side=tk.LEFT)
@@ -812,18 +824,21 @@ class WinodwClass(tk.Frame):
         master.bind("<Control-o>",self.shortcut_fileplay)
         self.menu_create()
     def shortcut_dirplay(self,event=None):
-        iDirPath = filedialog.askdirectory(initialdir = info.basedirname+"/../")
+        iDir = os.path.abspath(os.path.dirname("__file__")+"../")
+        #iDirPath = filedialog.askdirectory(initialdir = info.basedirname+"/../")
+        iDirPath = filedialog.askdirectory(initialdir = iDir+"/../")
         if iDirPath !='':
             if os.path.isdir(iDirPath):
-                self.quitandplay(iDirPath)
+                self.quitandplay(directoryname=iDirPath)
             else:
                 messagebox.showinfo('エラー', '指定されたパスが存在しません')
     def shortcut_fileplay(self,event=None):
         fTyp = [("", "*")]
-        iFilePath = filedialog.askopenfilename(filetype = fTyp, initialdir = info.basedirname+"/../")
+        iFile = os.path.abspath(os.path.dirname("__file__")+"../")
+        iFilePath = filedialog.askopenfilename(filetype = fTyp, initialdir = iFile+"/../")
         if iFilePath !='':
             if os.path.isfile(iFilePath):
-                self.quitandplay(iFilePath)
+                self.quitandplay(directoryname=iFilePath)
             else:
                 messagebox.showinfo('エラー', '指定されたパスが存在しません')
     def volumeset(self,dummy,volume):
@@ -882,9 +897,9 @@ class WinodwClass(tk.Frame):
                 messagebox.showinfo('リセット完了', '再生回数をリセットしました')
         else:
             messagebox.showinfo('エラー', '再生した曲がありません')
-    def quitandplay(self,directoryname):
+    def quitandplay(self,event=None,directoryname=None):
         if info.song is not None and info.thread_play is not None:
-            delflag = messagebox.askyesno('確認', '別のプレイリストを再生するには今のプレイリストを終了します。よろしいですか？')
+            delflag = messagebox.askyesno('確認', '別のプレイリスト('+str(directoryname)+')を再生するには今のプレイリストを終了します。よろしいですか？')
             if delflag:
                 info.next_play_index=info.playlist_len+2
                 info.back_flag=False
@@ -912,7 +927,7 @@ class WinodwClass(tk.Frame):
             with open(info.basedirname+'/PickleData/Latest5Directory.pickle', 'rb') as f:
                 Latest5Directory=pickle.load(f)
             for im,name in enumerate(Latest5Directory):
-                second_menu.add_command(label = name, command = partial(self.quitandplay,name),under=5)
+                second_menu.add_command(label = name, command = partial(self.quitandplay,directoryname=name),under=5)
     def add_favoritedirectory(self):
         if os.path.exists(info.basedirname+'/PickleData/FavoriteDirectory.pickle'):
             with open(info.basedirname+'/PickleData/FavoriteDirectory.pickle', 'rb') as f:
@@ -921,7 +936,8 @@ class WinodwClass(tk.Frame):
             FavoriteDirectory=[]
         if info.targetname_str in FavoriteDirectory:
             FavoriteDirectory.remove(info.targetname_str)
-        FavoriteDirectory.insert(0,info.targetname_str)
+        #FavoriteDirectory.insert(0,info.targetname_str)
+        FavoriteDirectory.append(info.targetname_str)
         with open(info.basedirname+'/PickleData/FavoriteDirectory.pickle','wb') as f:
             pickle.dump(FavoriteDirectory,f)
         self.show_favoritedirectory()
@@ -943,6 +959,7 @@ class WinodwClass(tk.Frame):
                 FavoriteDirectory.remove(name)
                 with open(info.basedirname+'/PickleData/FavoriteDirectory.pickle','wb') as f:
                     pickle.dump(FavoriteDirectory,f)
+        self.show_favoritedirectory()
     def show_favoritedirectory(self):
         second_menu=Menu(self.menu_playlist_open,tearoff=0)
         self.menu_playlist_open.entryconfigure(3, menu=second_menu)#更新
@@ -952,8 +969,38 @@ class WinodwClass(tk.Frame):
             for im,name in enumerate(FavoriteDirectory):
                 third_menu=Menu(self.menu_playlist_open,tearoff=0)
                 second_menu.add_cascade(label = name,under=5,menu=third_menu)
-                third_menu.add_command(label="再生",command = partial(self.quitandplay,name),under=5)
+                if im<9:
+                    third_menu.add_command(label="再生",command = partial(self.quitandplay,directoryname=name),under=5,accelerator="Ctrl+"+str(im+1))
+                elif im==9:
+                    third_menu.add_command(label="再生",command = partial(self.quitandplay,directoryname=name),under=5,accelerator="Ctrl+0")
+                else:
+                    third_menu.add_command(label="再生",command = partial(self.quitandplay,directoryname=name),under=5)
+                #self.master.bind("<Control-"+str(im)+">",partial(self.quitandplay,name))
+                if im<9:
+                    self.master.bind("<Control-KeyPress-"+str(im+1)+">",partial(self.quitandplay,directoryname=name))
+                elif im==9:
+                    self.master.bind("<Control-KeyPress-0>",partial(self.quitandplay,directoryname=name))
                 third_menu.add_command(label="削除",command = partial(self.delete_favoritedirectory,name=name,menu=second_menu),under=5)
+            for i in range(im+1,10):
+                if i<9:
+                    self.master.bind("<Control-KeyPress-"+str(i+1)+">", (lambda: 'pass')())
+                elif i==9:
+                    self.master.bind("<Control-KeyPress-0>", (lambda: 'pass')())
+
+    def show_outputdevice(self):
+        second_menu=Menu(self.device,tearoff=0)
+        self.device.entryconfigure(0, menu=second_menu)#更新
+        if len(outputdevicelist)==0:
+            pass
+        elif len(outputdevicelist)==1:
+            info.outputdeviceindex=IntVar(value=outputdevicelist[0]['index'])
+            second_menu.add_radiobutton(label = outputdevicelist[0]['name'], command = partial(OutputDeviceRead,outputdeviceInputClass=None),under=5,variable=info.outputdeviceindex,value=outputdevicelist[0]['index'])
+            #info.outputdeviceindex=outputdevicelist[0]['index']
+        elif len(outputdevicelist)>=2:
+            info.outputdeviceindex=IntVar(value=outputdevicelist[0]['index'])
+            for i in range(len(outputdevicelist)):
+                second_menu.add_radiobutton(label = outputdevicelist[i]['name'], command = partial(OutputDeviceRead,outputdeviceInputClass=None),under=5,variable=info.outputdeviceindex,value=outputdevicelist[i]['index'])
+
     def menu_create(self):
         self.menu_ROOT = Menu(self.master)
 
@@ -962,38 +1009,43 @@ class WinodwClass(tk.Frame):
         self.menu_playlist = Menu(self.menu_ROOT, tearoff = False)
         self.menu_Ranking = Menu(self.menu_ROOT, tearoff = False)
         self.menu_playlist_open = Menu(self.menu_ROOT, tearoff = False)
+        self.device = Menu(self.menu_ROOT, tearoff = False)
 
         self.master.configure(menu = self.menu_ROOT)
 
         info.algorithmvar = StringVar(value=1)
 
-        self.menu_ROOT.add_cascade(label = 'アルゴリズム', under = 0, menu = self.menu_FILE)
+        self.menu_ROOT.add_cascade(label = 'アルゴリズム(A)', under = 0, menu = self.menu_FILE,underline=7)
         self.menu_FILE.add_radiobutton(label = 'libosa', command = lambda:setalgorithm(algorithm_num=1),variable=info.algorithmvar,value=1)
         self.menu_FILE.add_radiobutton(label = '愚直アルゴリズム', command = lambda:setalgorithm(algorithm_num=0),variable=info.algorithmvar,value=0)
 
         info.isfavoritevar = StringVar(value=0)
 
-        self.menu_ROOT.add_cascade(label = '再生モード', under = 0, menu = self.menu_EDIT)
+        self.menu_ROOT.add_cascade(label = '再生モード(M)', under = 0, menu = self.menu_EDIT,underline=6)
         self.menu_EDIT.add_radiobutton(label = '通常', command = lambda:setisfavorite(isfavorite_num=0),variable=info.isfavoritevar,value=0)
         self.menu_EDIT.add_radiobutton(label = 'お気に入りのみ', command = lambda:setisfavorite(isfavorite_num=1,isfavoritevar=info.isfavoritevar),variable=info.isfavoritevar,value=1)
 
-        self.menu_ROOT.add_cascade(label = '次に再生', under = 0, menu = self.menu_playlist)
+        self.menu_ROOT.add_cascade(label = '次に再生(N)', under = 0, menu = self.menu_playlist,underline=5)
 
-        self.menu_ROOT.add_cascade(label = 'ランキング', under = 0, menu = self.menu_Ranking)
+        self.menu_ROOT.add_cascade(label = 'ランキング(R)', under = 0, menu = self.menu_Ranking,underline=6)
         self.menu_Ranking.add_command(label = '再生回数表示', command = lambda:self.showplayviews() if info.thread_play is not None else messagebox.showinfo('エラー', '音楽再生中にしか使用できません'))
         self.menu_Ranking.add_command(label = '再生回数トップ10!(このプレイリスト)', command = lambda:self.showplayviews_top10() if info.thread_play is not None else messagebox.showinfo('エラー', '音楽再生中にしか使用できません'))
         self.menu_Ranking.add_command(label = '再生回数トップ10!(すべてのプレイリスト)', command = lambda:self.showallplayviews_top10())
         self.menu_Ranking.add_command(label = '再生回数をリセット', command = lambda:self.deletepickle() if info.thread_play is None else messagebox.showinfo('エラー', 'プレイリストを終了してください'))
 
-        self.menu_ROOT.add_cascade(label = 'プレイリスト', under = 0, menu = self.menu_playlist_open)
+        self.menu_ROOT.add_cascade(label = 'プレイリスト(P)', under = 0, menu = self.menu_playlist_open,underline=7)
+        #self.master.bind("<Control-KeyPress-p>", self.menu_playlist_open)
         self.menu_playlist_open.add_cascade(label = '最近開いたフォルダから開く')
         self.menu_playlist_open.entryconfigure(0, command= lambda:self.show_latestopendirectory() if info.thread_play is None else messagebox.showinfo('エラー', 'プレイリストを終了してください'))#更新
         self.menu_playlist_open.add_command(label = '再生', command = start_playthread)
         self.menu_playlist_open.add_command(label = '現在再生中のフォルダをお気に入りに登録', command = lambda:self.add_favoritedirectory() if info.thread_play is not None else messagebox.showinfo('エラー', 'プレイリストを開始してください'))
         self.menu_playlist_open.add_cascade(label = 'お気に入りフォルダ', command = self.show_favoritedirectory)
+        self.menu_ROOT.add_cascade(label = 'デバイス(D)', under = 0, menu = self.device,underline=5)
+        self.device.add_cascade(label = '出力デバイス選択')
         if info.thread_play is None:
             self.show_latestopendirectory()
             self.show_favoritedirectory()
+            self.show_outputdevice()
 
 class pos_renew():
     root,scalebar=None,None
@@ -1064,7 +1116,7 @@ class ScrollFrame(ClassFrame):
 
         self.buttons = []
         for i, target in enumerate(playlist):
-            self.buttons.append(tk.Button(self.interior, text=str(i+1)+": "+target, command=partial(backgroundprocess,i+1,'')))
+            self.buttons.append(tk.Button(self.interior, text=str(i+1)+": "+target, command=partial(backgroundprocess,kb=i+1)))
             self.buttons[i].pack(anchor=tk.NW, fill=tk.X, pady=(0, 10))
 
     def configure_interior(self, event=None):
@@ -1203,9 +1255,9 @@ class PlaylistCanvas():
                 info.Window.menu_playlist.entryconfigure(i,label=str(int(i)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
                 i+=1
         if len(info.next_play_index_list)!=0:
-            info.Window.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+            info.Window.menu_ROOT.entryconfigure(3, label="次に再生(N)("+str(len(info.next_play_index_list))+")")#更新
         else:
-            info.Window.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+            info.Window.menu_ROOT.entryconfigure(3, label='次に再生(N)')#更新
     def add_nextplaylist(self, event=None,i=None):
         if info.isfavorite==0 or (info.isfavorite==1 and info.favorite_songlist[i]==1):
             self.playlistframe.buttons[i].after(100,lambda: self.playlistframe.buttons[i].configure(state=tk.DISABLED))
@@ -1225,9 +1277,9 @@ class PlaylistCanvas():
                 info.Window.menu_playlist.add_cascade(label = str(len(info.next_play_index_list))+ordinal_end+'→'+self.playlistframe.buttons[i]['text'],menu=self.second_menu[-1],under=5)
             self.second_menu[-1].add_command(label='リストから削除',under=4,command=partial(self.deletesong_fromnextplayindexlist,i=len(info.next_play_index_list)-1))
             if len(info.next_play_index_list)!=0:
-                info.Window.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                info.Window.menu_ROOT.entryconfigure(3, label="次に再生(N)("+str(len(info.next_play_index_list))+")")#更新
             else:
-                info.Window.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+                info.Window.menu_ROOT.entryconfigure(3, label='次に再生(N)')#更新
             if self.playlistframe.buttons[i]['bg']=='yellow':
                 self.playlistframe.buttons[i]['bg']='red'
                 self.playlistframe.buttons[i].after(100,lambda: self.playlistframe.buttons[i].configure(bg='yellow'))
@@ -1286,9 +1338,9 @@ class PlaylistCanvas():
                                         id_prime+=1
 
                                 if len(info.next_play_index_list)!=0:
-                                    info.Window.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                                    info.Window.menu_ROOT.entryconfigure(3, label="次に再生(N)("+str(len(info.next_play_index_list))+")")#更新
                                 else:
-                                    info.Window.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+                                    info.Window.menu_ROOT.entryconfigure(3, label='次に再生(N)')#更新
                             else:
                                 info.favorite_songlist[i]=1
                                 return
@@ -1571,9 +1623,9 @@ class PlayThread(threading.Thread):
                                 info.Window.menu_playlist.entryconfigure(id,label=str(int(id)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
                                 id+=1
                         if len(info.next_play_index_list)!=0:
-                            info.Window.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                            info.Window.menu_ROOT.entryconfigure(3, label="次に再生(N)("+str(len(info.next_play_index_list))+")")#更新
                         else:
-                            info.Window.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+                            info.Window.menu_ROOT.entryconfigure(3, label='次に再生(N)')#更新
                     elif info.back_flag:
                         if 1 in info.favorite_songlist[:index] and info.isfavorite==1:
                             rev=info.favorite_songlist[:index]
@@ -1644,9 +1696,9 @@ class PlayThread(threading.Thread):
                                 info.Window.menu_playlist.entryconfigure(id,label=str(int(id)+1)+ordinal_end+'→'+i_label[i_label.find('→')+1:])
                                 id+=1
                         if len(info.next_play_index_list)!=0:
-                            info.Window.menu_ROOT.entryconfigure(3, label="次に再生("+str(len(info.next_play_index_list))+")")#更新
+                            info.Window.menu_ROOT.entryconfigure(3, label="次に再生(N)("+str(len(info.next_play_index_list))+")")#更新
                         else:
-                            info.Window.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+                            info.Window.menu_ROOT.entryconfigure(3, label='次に再生(N)')#更新
                     elif info.back_flag:
                         if 1 in info.favorite_songlist[:index] and info.isfavorite==1:
                             rev=info.favorite_songlist[:index]
@@ -1683,10 +1735,9 @@ class PlayThread(threading.Thread):
             del info.next_play_index_list[0]
             info.Window.menu_playlist.delete(0)#削除
             del info.canvas.second_menu[0]
-        info.Window.menu_ROOT.entryconfigure(3, label='次に再生')#更新
+        info.Window.menu_ROOT.entryconfigure(3, label='次に再生(N)')#更新
         info.isfavorite=0
         info.isfavoritevar.set(0)
-        info.thread_play=None
         canvas.grid_forget()
         info.root.title("音楽再生アプリ")
         info.Window.label['text']='--s/--s'
@@ -1701,6 +1752,7 @@ class PlayThread(threading.Thread):
         info.targetname_1=None #フォルダ指定のentry
         info.targetname_2=None #ファイル指定のentry
         info.targetname_str=None #パス指定のentry
+        info.thread_play=None
 def start_windowthread():
     thread_window=WindowThread()
     thread_window.start()
@@ -1752,45 +1804,12 @@ class KeySpeedInputClass(tk.Frame):
                             command=lambda:NormalPlay_Set(KeyInput,SpeedInput))
         NormalPlay.grid(row=3, column=0)
 
-class outputdeviceInputClass(tk.Frame):
-    def __init__(self,master,outputdevicelist):
-        super().__init__(master)
-        master.title("出力デバイスの選択")
-        var = tk.IntVar()
-        var.set(outputdevicelist[0]['index'])
-        for i in range(len(outputdevicelist)):
-            tk.Radiobutton(master, value=outputdevicelist[i]['index'], variable=var, text=outputdevicelist[i]['name']).pack(side='top')
-        DeviceReadButton=tk.Button(master, height=1, width=10, text="OK", command = lambda:OutputDeviceRead(outputdeviceInputClass=master,va=var))
-        DeviceReadButton.pack(side='top')
-        master.bind("<Return>",partial(OutputDeviceRead,outputdeviceInputClass=master,var=var))
-
-class outputdeviceInputThread(threading.Thread):
-    def __init__(self,outputdevicelist):
-        threading.Thread.__init__(self)
-        self.outputdevicelist=outputdevicelist
-    def run(self):
-        outputdeviceInputtk = Tk()
-        outputdeviceInput=outputdeviceInputClass(master=outputdeviceInputtk,outputdevicelist=self.outputdevicelist)
-        outputdeviceInput.mainloop()
-def start_outputdeviceInputThread():
-    thread_outputdevice=outputdeviceInputThread(outputdevicelist)
-    thread_outputdevice.start()
-
 if __name__ == "__main__":
     p=pyaudio.PyAudio()
     outputdevicelist=[]
     for index in range(0,p.get_device_count()):
         if p.get_device_info_by_index(index)['hostApi']==0 and p.get_device_info_by_index(index)['maxOutputChannels']==2:
             outputdevicelist.append(p.get_device_info_by_index(index))
-    print("出力デバイスを選択")
-    if len(outputdevicelist)==0:
-        print("出力デバイスがありません。プレイヤーを開始できません")
-    elif len(outputdevicelist)==1:
-        info.outputdeviceindex=outputdevicelist[0]['index']
-    elif len(outputdevicelist)>=2:
-        outputdeviceInputtk=Tk()
-        outputdeviceInput=outputdeviceInputClass(master=outputdeviceInputtk,outputdevicelist=outputdevicelist)
-        outputdeviceInput.mainloop()
     help()
     r = 2**(1/12)
     info.r12=(2**(1/12))**np.float(info.Key)
