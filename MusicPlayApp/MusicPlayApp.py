@@ -264,7 +264,6 @@ class AudioFile:
                                     while self.stream.is_active()==False:
                                         if info.quit or info.stop_flag==False:
                                             break
-                                        print("停止大気中")
                                         time.sleep(0.1)
                                     self.stream.start_stream()
                                 if info.stop_flag==False:
@@ -316,6 +315,7 @@ class AudioFile:
                         output = True)
 
 def backgroundprocess(event=None,kb=None,scaleint=None,shuffle_button=None,directory_repeat_button=None,one_repeat_button=None,windowroot=None):
+    print(kb)
     if isinstance(kb,int):#playlistの曲のボタンが押されたとき
         if info.isfavorite==0:
             info.next_play_index=kb
@@ -328,12 +328,12 @@ def backgroundprocess(event=None,kb=None,scaleint=None,shuffle_button=None,direc
                 info.quit=True
             else:
                 messagebox.showinfo('エラー', 'お気に入り以外の曲を再生するにはお気に入りのみをoffにしてください')
-    elif isinstance(kb,float):
+    elif scaleint is not None:
         if info.thread_play is None or info.song is None:
             messagebox.showinfo('エラー', '音楽を開始してください')
         else:
             try:
-                info.song.wf.setpos(int(info.head+info.onesecframes*float(scaleint)))
+                info.song.wf.setpos(int(info.head+info.onesecframes*float(scaleint.get())))
             except wave.Error:
                 pass
             info.renew_flag=True
@@ -665,7 +665,7 @@ class WinodwClass(tk.Frame):
         master.title("音楽再生アプリ") #タイトル作成
         #master.resizable(0,0)
         master.protocol('WM_DELETE_WINDOW', (lambda:master.quit() if info.thread_play is None else messagebox.showinfo('エラー', 'PlayListを終了させてください')))
-
+        master.unbind_class("Button", "<Key-space>")
         image = Image.open("img/フラット.png").resize((50, 50))
         self.flatimage=ImageTk.PhotoImage(image)
         tk.Button(master, text="pitch-1", fg = "red", image=self.flatimage,command=partial(backgroundprocess,kb=b'down_much'),font=("",20)).grid(row=4, column=2, padx=10, pady=10)
@@ -732,7 +732,7 @@ class WinodwClass(tk.Frame):
         image = Image.open("img/リスタート.png").resize((50, 50))
         self.RestartImage=ImageTk.PhotoImage(image)
         tk.Button(master, text="restart", fg = "deep pink",image=self.RestartImage,command=partial(backgroundprocess,kb=b'p'),font=("",20)).grid(row=6, column=4, padx=10, pady=10)
-        master.bind("<Key-space>",partial(backgroundprocess,kb=b'p'))
+        master.bind("<Key-BackSpace>",partial(backgroundprocess,kb=b'p'))
         #master.bind("<Key-p>",partial(backgroundprocess,kb=b'p'))
 
         image = Image.open("img/EXIT.png").resize((50, 50))
@@ -796,7 +796,7 @@ class WinodwClass(tk.Frame):
             length=700,
             from_=0,
             to=info.duration,
-            command=partial(backgroundprocess,kb=val.get()))
+            command=partial(backgroundprocess,scaleint=val))
         position=pos_renew(master,self.scalebar)
         position.renewposition()
         self.scalebar.pack(side=tk.LEFT)
@@ -1057,6 +1057,7 @@ class pos_renew():
             val = DoubleVar(master=self.root,value=int((info.song.wf.tell()-info.head)/(info.last-info.head)*info.duration))
             self.scalebar['variable']=val
             self.scalebar['to']=info.duration
+            self.scalebar['command']=partial(backgroundprocess,scaleint=val)
         self.root.after(100,self.renewposition)
 class WindowThread(threading.Thread):
     def __init__(self):
