@@ -86,26 +86,18 @@ def NormalPlay_Set(KeyInput,SpeedInput):#標準再生
 
 
 def help():
-    print("操作説明")
-    print("p:最初から")
-    print("b:前のファイルへ")
-    print("n:次のファイルへ")
-    print("s:10秒戻る")
-    print("d:3秒戻る")
-    print("f:3秒進む")
-    print("g:10秒進む")
-    print("e:音程リセット")
-    print("r:速度リセット")
-    print("q:PlayList終了")
-    print("z:シャッフル再生")
-    print("x:フォルダリピート")
-    print("c:1曲リピート")
-    print("v:ノーマル再生")
-    print("Enter:一時停止、再生")
-    print("矢印(上):キーを上げる")
-    print("矢印(下):キーを下げる")
-    print("矢印(右):速度を上げる")
-    print("矢印(左):速度を下げる")
+    print("キーボードショートカット説明")
+    print("・Ctrl-{1~9,0の数字}:お気に入りに登録しているフォルダを再生(0は10番目)")
+    print("・矢印(左右):5秒巻き戻し、早送り")
+    print("・Enter:一時停止")
+    print("・Ctrl-矢印(左右):10秒巻き戻し、早送り")
+    print("・Shift-矢印(左右):速度変更")
+    print("・Shift-矢印(上下):音程変更")
+    print("・Ctrl-Shift-矢印(左右):前の曲、次の曲")
+    print("・Space:最初から")
+    print("・Escape:終了")
+    print("・Alt+{メニューバーの()内の値}:メニューを開く")
+
 def gen_xfade_honesty(x_pre, x_next, fadetime, sr):#愚直アルゴリズム
     ft_len = int(fadetime)#*sr)
     if x_pre is None:
