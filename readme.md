@@ -6,7 +6,7 @@
 (注意!:エクスプローラーの名前変更等で拡張子を変更するとフォーマットが対応していないためエラーになります。)拡張子を変更したい場合は変換するソフト等を用いてください。
 
 ## 実行の仕方
-MusicPlayAppフォルダの中のMusicPlayApp.exeを実行することでプレイヤーを開始できます。(フォルダ構造はそのままにしてください。ライブラリが参照できません)
+```https://drive.google.com/file/d/1ZQV7lDdHRwZdgiYMEKRrSKy0ofVaW8ZF/view?usp=sharing```よりzipファイルをダウンロードし。MusicPlayAppフォルダの中のMusicPlayApp.exeを実行することでプレイヤーを開始できます。(フォルダ構造はそのままにしてください。ライブラリが参照できません)
 
 ## 操作の方法
 ### 1.出力デバイスの選択
